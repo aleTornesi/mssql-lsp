@@ -32,3 +32,28 @@ func (*GenericSQLDialect) IsPlaceHolderPart(r rune) bool {
 }
 
 var _ Dialect = &GenericSQLDialect{}
+
+// MSSQLDialect implements the Dialect interface for T-SQL.
+type MSSQLDialect struct{}
+
+func (*MSSQLDialect) IsIdentifierStart(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '@' || r == '#' || r == '_'
+}
+
+func (*MSSQLDialect) IsIdentifierPart(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '@' || r == '_' || r == '#' || r == '$'
+}
+
+func (*MSSQLDialect) IsDelimitedIdentifierStart(r rune) bool {
+	return r == '[' || r == '"'
+}
+
+func (*MSSQLDialect) IsPlaceHolderStart(r rune) bool {
+	return r == '@'
+}
+
+func (*MSSQLDialect) IsPlaceHolderPart(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
+}
+
+var _ Dialect = &MSSQLDialect{}

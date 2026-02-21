@@ -55,7 +55,7 @@ func parseInfixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, ig
 
 func Parse(text string) (ast.TokenList, error) {
 	src := bytes.NewBuffer([]byte(text))
-	p, err := NewParser(src, &dialect.GenericSQLDialect{})
+	p, err := NewParser(src, &dialect.MSSQLDialect{})
 	if err != nil {
 		return nil, err
 	}

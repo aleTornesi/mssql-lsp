@@ -117,21 +117,21 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 	}
 
 	lastWord := getLastWord(batchText, adjustedLine+1, params.Position.Character)
-	withBackQuote := strings.HasPrefix(lastWord, "`")
+	withBracketQuote := strings.HasPrefix(lastWord, "[")
 
 	var items []lsp.CompletionItem
 
 	if c.DBCache != nil {
 		if completionTypeIs(ctx.types, CompletionTypeColumn) {
 			candidates := c.columnCandidates(definedTables, ctx.parent)
-			if withBackQuote {
+			if withBracketQuote {
 				candidates = toQuotedCandidates(candidates)
 			}
 			items = append(items, candidates...)
 		}
 		if completionTypeIs(ctx.types, CompletionTypeReferencedTable) {
 			candidates := c.ReferencedTableCandidates(definedTables)
-			if withBackQuote {
+			if withBracketQuote {
 				candidates = toQuotedCandidates(candidates)
 			}
 			items = append(items, candidates...)
@@ -142,28 +142,28 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 				excl = nil
 			}
 			candidates := c.TableCandidates(ctx.parent, excl)
-			if withBackQuote {
+			if withBracketQuote {
 				candidates = toQuotedCandidates(candidates)
 			}
 			items = append(items, candidates...)
 		}
 		if completionTypeIs(ctx.types, CompletionTypeSchema) {
 			candidates := c.SchemaCandidates()
-			if withBackQuote {
+			if withBracketQuote {
 				candidates = toQuotedCandidates(candidates)
 			}
 			items = append(items, candidates...)
 		}
 		if completionTypeIs(ctx.types, CompletionTypeSubQuery) {
 			candidates := c.SubQueryCandidates(definedSubQueries)
-			if withBackQuote {
+			if withBracketQuote {
 				candidates = toQuotedCandidates(candidates)
 			}
 			items = append(items, candidates...)
 		}
 		if completionTypeIs(ctx.types, CompletionTypeSubQueryColumn) {
 			candidates := c.SubQueryColumnCandidates(definedSubQueries)
-			if withBackQuote {
+			if withBracketQuote {
 				candidates = toQuotedCandidates(candidates)
 			}
 			items = append(items, candidates...)
@@ -179,8 +179,8 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 				return nil, err
 			}
 			candidates := c.joinCandidates(table, tables, definedTables, joinOn, lowercaseKeywords)
-			if withBackQuote {
-				candidates = toQuotedCandidates(candidates) // what to do here?
+			if withBracketQuote {
+				candidates = toQuotedCandidates(candidates)
 			}
 			items = append(candidates, items...)
 		}
@@ -436,7 +436,7 @@ func getLastWord(text string, line, char int) string {
 	t := getBeforeCursorText(text, line, char)
 	s := getLine(t, line)
 
-	reg := regexp.MustCompile("[\\w`]+$")
+	reg := regexp.MustCompile(`[\w\[\]]+$`)
 	ss := reg.FindAllString(s, -1)
 	if len(ss) == 0 {
 		return ""
@@ -464,7 +464,7 @@ func getBeforeCursorText(text string, line, char int) string {
 func toQuotedCandidates(candidates []lsp.CompletionItem) []lsp.CompletionItem {
 	quotedCandidates := make([]lsp.CompletionItem, len(candidates))
 	for i, candidate := range candidates {
-		candidate.Label = fmt.Sprintf("`%s`", candidate.Label)
+		candidate.Label = fmt.Sprintf("[%s]", candidate.Label)
 		quotedCandidates[i] = candidate
 	}
 	return quotedCandidates

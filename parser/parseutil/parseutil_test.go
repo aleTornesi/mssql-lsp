@@ -126,7 +126,7 @@ func TestExtractSubQueryViews(t *testing.T) {
 		},
 		{
 			name:  "double",
-			input: "select * from (select * from city) as sub1, (select * from country) as sub2 limit 1",
+			input: "select top 1 * from (select * from city) as sub1, (select * from country) as sub2",
 			pos:   token.Pos{Line: 0, Col: 14},
 			want: []*SubQueryInfo{
 				{
@@ -462,7 +462,7 @@ func TestExtractSubQueryViews(t *testing.T) {
 		},
 		{
 			name:  "join sub query",
-			input: "select ti.country_name, ti.country_language from (select `c`.`Name` as `country_name`, `cl`.`Language` as `country_language` from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti",
+			input: "select ti.country_name, ti.country_language from (select [c].[Name] as [country_name], [cl].[Language] as [country_language] from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti",
 			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*SubQueryInfo{
 				{
@@ -534,7 +534,7 @@ func TestExtractSubQueryViews(t *testing.T) {
 		},
 		{
 			name:  "join sub query member asterisk identifier",
-			input: "select * from (select `c`.*, `cl`.* from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti",
+			input: "select * from (select [c].*, [cl].* from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti",
 			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*SubQueryInfo{
 				{
@@ -622,7 +622,7 @@ func TestExtractTable(t *testing.T) {
 		},
 		{
 			name:  "select quoted table reference",
-			input: "select * from `abc`",
+			input: "select * from [abc]",
 			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
@@ -632,7 +632,7 @@ func TestExtractTable(t *testing.T) {
 		},
 		{
 			name:  "select quoted table alias reference",
-			input: "select * from `abc` as a",
+			input: "select * from [abc] as a",
 			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
@@ -643,7 +643,7 @@ func TestExtractTable(t *testing.T) {
 		},
 		{
 			name:  "select quoted table quoted alias reference",
-			input: "select * from `abc` as `a`",
+			input: "select * from [abc] as [a]",
 			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{

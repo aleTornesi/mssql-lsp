@@ -331,8 +331,8 @@ func TestParseIdentifier(t *testing.T) {
 			},
 		},
 		{
-			name:  "back quote identifier",
-			input: "`abc`",
+			name:  "bracket quote identifier",
+			input: "[abc]",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
@@ -340,8 +340,8 @@ func TestParseIdentifier(t *testing.T) {
 			},
 		},
 		{
-			name:  "non close back quote identifier",
-			input: "`abc",
+			name:  "non close bracket quote identifier",
+			input: "[abc",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
@@ -417,12 +417,12 @@ func TestMemberIdentifier(t *testing.T) {
 			},
 		},
 		{
-			name:  "back quote member identifier",
-			input: "`abc`.`def`",
+			name:  "bracket quote member identifier",
+			input: "[abc].[def]",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testMemberIdentifier(t, list[0], input, "`abc`", "`def`")
+				testMemberIdentifier(t, list[0], input, "[abc]", "[def]")
 			},
 		},
 		{
@@ -1030,8 +1030,8 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "aliased member identiger",
-			input: "`c`.`Name` as `country_name`, `cl`.`Language` as `country_language`",
+			name:  "aliased member identifier",
+			input: "[c].[Name] as [country_name], [cl].[Language] as [country_language]",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()

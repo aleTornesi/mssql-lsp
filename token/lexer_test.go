@@ -293,15 +293,15 @@ select`,
 			},
 		},
 		{
-			name: "parent identifier with back quote",
-			in:   "`foo`.`bar`",
+			name: "parent identifier with bracket quote",
+			in:   "[foo].[bar]",
 			out: []*Token{
 				{
 					Kind: SQLKeyword,
 					Value: &SQLWord{
 						Value:      "foo",
 						Keyword:    "FOO",
-						QuoteStyle: '`',
+						QuoteStyle: '[',
 						Kind:       dialect.Unmatched,
 					},
 					From: Pos{Line: 0, Col: 0},
@@ -318,7 +318,7 @@ select`,
 					Value: &SQLWord{
 						Value:      "bar",
 						Keyword:    "BAR",
-						QuoteStyle: '`',
+						QuoteStyle: '[',
 						Kind:       dialect.Unmatched,
 					},
 					From: Pos{Line: 0, Col: 6},
@@ -356,14 +356,14 @@ select`,
 			},
 		},
 		{
-			name: "non closed back quote identifier",
-			in:   "`foo bar",
+			name: "non closed bracket quote identifier",
+			in:   "[foo bar",
 			out: []*Token{
 				{
 					Kind: SQLKeyword,
 					Value: &SQLWord{
-						Value:      "`foo",
-						Keyword:    "`FOO",
+						Value:      "[foo",
+						Keyword:    "[FOO",
 						QuoteStyle: 0,
 						Kind:       dialect.Unmatched,
 					},
@@ -657,7 +657,7 @@ comment */`,
 		},
 		{
 			name: "others",
-			in:   "\\[{&}]",
+			in:   "\\{&}",
 			out: []*Token{
 				{
 					Kind:  Backslash,
@@ -666,34 +666,22 @@ comment */`,
 					To:    Pos{Line: 0, Col: 1},
 				},
 				{
-					Kind:  LBracket,
-					Value: "[",
+					Kind:  LBrace,
+					Value: "{",
 					From:  Pos{Line: 0, Col: 1},
 					To:    Pos{Line: 0, Col: 2},
 				},
 				{
-					Kind:  LBrace,
-					Value: "{",
+					Kind:  Ampersand,
+					Value: "&",
 					From:  Pos{Line: 0, Col: 2},
 					To:    Pos{Line: 0, Col: 3},
 				},
 				{
-					Kind:  Ampersand,
-					Value: "&",
-					From:  Pos{Line: 0, Col: 3},
-					To:    Pos{Line: 0, Col: 4},
-				},
-				{
 					Kind:  RBrace,
 					Value: "}",
-					From:  Pos{Line: 0, Col: 4},
-					To:    Pos{Line: 0, Col: 5},
-				},
-				{
-					Kind:  RBracket,
-					Value: "]",
-					From:  Pos{Line: 0, Col: 5},
-					To:    Pos{Line: 0, Col: 6},
+					From:  Pos{Line: 0, Col: 3},
+					To:    Pos{Line: 0, Col: 4},
 				},
 			},
 		},
@@ -702,7 +690,7 @@ comment */`,
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			src := strings.NewReader(c.in)
-			tokenizer := NewTokenizer(src, &dialect.GenericSQLDialect{})
+			tokenizer := NewTokenizer(src, &dialect.MSSQLDialect{})
 
 			tok, err := tokenizer.Tokenize()
 			if err != nil {
@@ -772,7 +760,7 @@ func TestTokenizer_Pos(t *testing.T) {
 		for _, c := range cases {
 			t.Run(c.operator, func(t *testing.T) {
 				src := fmt.Sprintf("1 %s 1", c.operator)
-				tokenizer := NewTokenizer(bytes.NewBufferString(src), &dialect.GenericSQLDialect{})
+				tokenizer := NewTokenizer(bytes.NewBufferString(src), &dialect.MSSQLDialect{})
 
 				if _, err := tokenizer.Tokenize(); err != nil {
 					t.Fatal(err)
@@ -835,7 +823,7 @@ test comment
 
 		for _, c := range cases {
 			t.Run(c.name, func(t *testing.T) {
-				tokenizer := NewTokenizer(bytes.NewBufferString(c.src), &dialect.GenericSQLDialect{})
+				tokenizer := NewTokenizer(bytes.NewBufferString(c.src), &dialect.MSSQLDialect{})
 
 				if _, err := tokenizer.Tokenize(); err != nil {
 					t.Fatal(err)
@@ -864,7 +852,7 @@ test
 
 		for _, c := range cases {
 			t.Run(c.name, func(t *testing.T) {
-				tokenizer := NewTokenizer(bytes.NewBufferString(c.src), &dialect.GenericSQLDialect{})
+				tokenizer := NewTokenizer(bytes.NewBufferString(c.src), &dialect.MSSQLDialect{})
 
 				_, err := tokenizer.Tokenize()
 				if err == nil {
