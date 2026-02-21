@@ -91,6 +91,10 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 
 func (p *Parser) Parse() (ast.TokenList, error) {
 	root := p.root
+	root = parsePrefixGroup(astutil.NewNodeReader(root), beginTryMatcher, parseBeginTry)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), beginMatcher, parseBeginEnd)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), ifMatcher, parseIfStatement)
+
 	root = parseStatement(astutil.NewNodeReader(root))
 
 	root = parsePrefixGroup(astutil.NewNodeReader(root), parenthesisPrefixMatcher, parseParenthesis)
@@ -120,6 +124,11 @@ func parseStatement(reader *astutil.NodeReader) ast.TokenList {
 	var replaceNodes []ast.Node
 	var startIndex int
 	for reader.NextNode(false) {
+		switch reader.CurNode.(type) {
+		case *ast.BeginEnd, *ast.TryCatch, *ast.IfStatement:
+			// Block nodes are opaque; skip and let them be captured in the statement range
+			continue
+		}
 		if list, ok := reader.CurNode.(ast.TokenList); ok {
 			replaceNodes = append(replaceNodes, parseStatement(astutil.NewNodeReader(list)))
 			continue
@@ -263,6 +272,8 @@ var multiKeywordMap = map[string][]string{
 	"LEFT":    {"OUTER", "JOIN"},
 	"RIGHT":   {"OUTER", "JOIN"},
 	"NATURAL": {"LEFT", "RIGHT", "OUTER", "JOIN"},
+	"BEGIN":   {"TRY", "CATCH", "TRANSACTION"},
+	"END":     {"TRY", "CATCH"},
 }
 
 func genMultiKeywordPrefixMatcher() astutil.NodeMatcher {
@@ -700,6 +711,117 @@ func parseCase(reader *astutil.NodeReader) ast.Node {
 		nodes = append(nodes, tmpReader.CurNode)
 	}
 	return reader.Node
+}
+
+// BEGIN TRY...END TRY BEGIN CATCH...END CATCH
+// At this stage all tokens are raw Items, no MultiKeyword nodes yet
+var beginTryMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{"BEGIN"},
+}
+
+func isKeyword(node ast.Node, kw string) bool {
+	return strings.EqualFold(node.String(), kw)
+}
+
+func parseBeginTry(reader *astutil.NodeReader) ast.Node {
+	// Only match BEGIN followed by TRY
+	if !reader.PeekNodeIs(true, astutil.NodeMatcher{ExpectKeyword: []string{"TRY"}}) {
+		return reader.CurNode
+	}
+	nodes := []ast.Node{reader.CurNode}
+	tmpReader := reader.CopyReader()
+	for tmpReader.NextNode(false) {
+		nodes = append(nodes, tmpReader.CurNode)
+		// Look for END followed by CATCH to close the block
+		if isKeyword(tmpReader.CurNode, "CATCH") && len(nodes) >= 2 {
+			prev := nodes[len(nodes)-2]
+			if isKeyword(prev, "END") {
+				reader.Index = tmpReader.Index
+				reader.CurNode = tmpReader.CurNode
+				return &ast.TryCatch{Toks: nodes}
+			}
+		}
+	}
+	// Tolerant: no END CATCH found
+	reader.Index = tmpReader.Index
+	reader.CurNode = tmpReader.CurNode
+	return &ast.TryCatch{Toks: nodes}
+}
+
+// BEGIN...END
+var beginMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{"BEGIN"},
+}
+var endMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{"END"},
+}
+
+func parseBeginEnd(reader *astutil.NodeReader) ast.Node {
+	// Skip if already consumed by TryCatch
+	if _, ok := reader.CurNode.(*ast.TryCatch); ok {
+		return reader.CurNode
+	}
+	// Skip BEGIN TRY / BEGIN CATCH / BEGIN TRANSACTION
+	if reader.PeekNodeIs(true, astutil.NodeMatcher{ExpectKeyword: []string{"TRY", "CATCH", "TRANSACTION"}}) {
+		return reader.CurNode
+	}
+	nodes := []ast.Node{reader.CurNode}
+	tmpReader := reader.CopyReader()
+	depth := 1
+	for tmpReader.NextNode(false) {
+		if tmpReader.CurNodeIs(beginMatcher) {
+			// Skip BEGIN TRY/CATCH/TRANSACTION
+			if !tmpReader.PeekNodeIs(true, astutil.NodeMatcher{ExpectKeyword: []string{"TRY", "CATCH", "TRANSACTION"}}) {
+				depth++
+			}
+		}
+		if tmpReader.CurNodeIs(endMatcher) {
+			// Skip END TRY / END CATCH
+			if !tmpReader.PeekNodeIs(true, astutil.NodeMatcher{ExpectKeyword: []string{"TRY", "CATCH"}}) {
+				depth--
+				if depth == 0 {
+					nodes = append(nodes, tmpReader.CurNode)
+					reader.Index = tmpReader.Index
+					reader.CurNode = tmpReader.CurNode
+					return &ast.BeginEnd{Toks: nodes}
+				}
+			}
+		}
+		nodes = append(nodes, tmpReader.CurNode)
+	}
+	// Tolerant: no END found
+	reader.Index = tmpReader.Index
+	reader.CurNode = tmpReader.CurNode
+	return &ast.BeginEnd{Toks: nodes}
+}
+
+// IF...ELSE
+var ifMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{"IF"},
+}
+var elseMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{"ELSE"},
+}
+
+func parseIfStatement(reader *astutil.NodeReader) ast.Node {
+	nodes := []ast.Node{reader.CurNode}
+	tmpReader := reader.CopyReader()
+	for tmpReader.NextNode(false) {
+		if tmpReader.CurNodeIs(elseMatcher) {
+			nodes = append(nodes, tmpReader.CurNode)
+			for tmpReader.NextNode(false) {
+				nodes = append(nodes, tmpReader.CurNode)
+			}
+			reader.Index = tmpReader.Index
+			reader.CurNode = tmpReader.CurNode
+			return &ast.IfStatement{Toks: nodes}
+		}
+		nodes = append(nodes, tmpReader.CurNode)
+	}
+	// No ELSE found
+	reader.Index = tmpReader.Index
+	reader.CurNode = tmpReader.CurNode
+	return &ast.IfStatement{Toks: nodes}
 }
 
 var expressionPrefixMatcher = astutil.NodeMatcher{

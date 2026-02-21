@@ -24,6 +24,9 @@ const (
 	TypeStatement
 	TypeIdentifierList
 	TypeSwitchCase
+	TypeBeginEnd
+	TypeTryCatch
+	TypeIfStatement
 	TypeNull
 )
 
@@ -470,6 +473,42 @@ func (sc *SwitchCase) GetTokens() []Node     { return sc.Toks }
 func (sc *SwitchCase) SetTokens(toks []Node) { sc.Toks = toks }
 func (sc *SwitchCase) Pos() token.Pos        { return findFrom(sc) }
 func (sc *SwitchCase) End() token.Pos        { return findTo(sc) }
+
+type BeginEnd struct {
+	Toks []Node
+}
+
+func (be *BeginEnd) String() string                    { return joinString(be.Toks) }
+func (be *BeginEnd) Render(opts *RenderOptions) string { return joinRender(be.Toks, opts) }
+func (be *BeginEnd) Type() NodeType                    { return TypeBeginEnd }
+func (be *BeginEnd) GetTokens() []Node                 { return be.Toks }
+func (be *BeginEnd) SetTokens(toks []Node)             { be.Toks = toks }
+func (be *BeginEnd) Pos() token.Pos                    { return findFrom(be) }
+func (be *BeginEnd) End() token.Pos                    { return findTo(be) }
+
+type TryCatch struct {
+	Toks []Node
+}
+
+func (tc *TryCatch) String() string                    { return joinString(tc.Toks) }
+func (tc *TryCatch) Render(opts *RenderOptions) string { return joinRender(tc.Toks, opts) }
+func (tc *TryCatch) Type() NodeType                    { return TypeTryCatch }
+func (tc *TryCatch) GetTokens() []Node                 { return tc.Toks }
+func (tc *TryCatch) SetTokens(toks []Node)             { tc.Toks = toks }
+func (tc *TryCatch) Pos() token.Pos                    { return findFrom(tc) }
+func (tc *TryCatch) End() token.Pos                    { return findTo(tc) }
+
+type IfStatement struct {
+	Toks []Node
+}
+
+func (is *IfStatement) String() string                    { return joinString(is.Toks) }
+func (is *IfStatement) Render(opts *RenderOptions) string { return joinRender(is.Toks, opts) }
+func (is *IfStatement) Type() NodeType                    { return TypeIfStatement }
+func (is *IfStatement) GetTokens() []Node                 { return is.Toks }
+func (is *IfStatement) SetTokens(toks []Node)             { is.Toks = toks }
+func (is *IfStatement) Pos() token.Pos                    { return findFrom(is) }
+func (is *IfStatement) End() token.Pos                    { return findTo(is) }
 
 type SQLToken struct {
 	Node

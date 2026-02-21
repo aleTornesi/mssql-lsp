@@ -1231,6 +1231,123 @@ func TestParseCase(t *testing.T) {
 	}
 }
 
+func TestParseBeginEnd(t *testing.T) {
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "simple begin end",
+			input: "BEGIN SELECT 1 END",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testBeginEnd(t, list[0], input)
+			},
+		},
+		{
+			name:  "begin end with semicolons",
+			input: "BEGIN SELECT 1; SELECT 2; END",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testBeginEnd(t, list[0], input)
+			},
+		},
+		{
+			name:  "nested begin end",
+			input: "BEGIN BEGIN SELECT 1 END END",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testBeginEnd(t, list[0], input)
+			},
+		},
+		{
+			name:  "begin end no close",
+			input: "BEGIN SELECT 1",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testBeginEnd(t, list[0], input)
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
+}
+
+func TestParseTryCatch(t *testing.T) {
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "simple try catch",
+			input: "BEGIN TRY SELECT 1 END TRY BEGIN CATCH SELECT 2 END CATCH",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testTryCatch(t, list[0], input)
+			},
+		},
+		{
+			name:  "try catch no end catch",
+			input: "BEGIN TRY SELECT 1 END TRY",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testTryCatch(t, list[0], input)
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
+}
+
+func TestParseIfStatement(t *testing.T) {
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "if without else",
+			input: "IF @x = 1 SELECT 1",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIfStatement(t, list[0], input)
+			},
+		},
+		{
+			name:  "if with else",
+			input: "IF @x = 1 SELECT 1 ELSE SELECT 2",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIfStatement(t, list[0], input)
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
+}
+
 func parseInit(t *testing.T, input string) []*ast.Statement {
 	t.Helper()
 	parsed, err := Parse(input)
@@ -1447,6 +1564,39 @@ func testSwitchCase(t *testing.T, node ast.Node, expect string) {
 	_, ok := node.(*ast.SwitchCase)
 	if !ok {
 		t.Fatalf("invalid type want SwitchCase got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testBeginEnd(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.BeginEnd)
+	if !ok {
+		t.Fatalf("invalid type want BeginEnd got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testTryCatch(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.TryCatch)
+	if !ok {
+		t.Fatalf("invalid type want TryCatch got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testIfStatement(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.IfStatement)
+	if !ok {
+		t.Fatalf("invalid type want IfStatement got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())

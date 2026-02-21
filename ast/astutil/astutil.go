@@ -244,7 +244,8 @@ func (nr *NodeReader) FindNode(ignoreWhiteSpace bool, nm NodeMatcher) (*NodeRead
 		if nm.IsMatchNodeTypes(node) {
 			return tmpReader, node
 		}
-		if _, ok := tmpReader.CurNode.(ast.TokenList); ok {
+		if _, ok := node.(ast.TokenList); ok {
+			tmpReader.NextNode(false)
 			continue
 		}
 		// For token object
