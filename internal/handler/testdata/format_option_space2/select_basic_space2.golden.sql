@@ -3,17 +3,16 @@ select
   b as bb,
   c
 from
-  table
+  tbl
 join (
   select
     a * 2 as a
   from
     new_table
 ) other
-  on table.a = other.a
+  on tbl.a = other.a
 where
-  c is true
+  c = 1
   and b between 3
   and 4
-  or d is 'blue'
-limit 10
+  or d = 'blue'
