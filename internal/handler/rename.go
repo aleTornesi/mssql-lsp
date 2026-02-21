@@ -37,13 +37,14 @@ func (s *Server) handleTextDocumentRename(ctx context.Context, conn *jsonrpc2.Co
 }
 
 func rename(text string, params lsp.RenameParams) (*lsp.WorkspaceEdit, error) {
-	parsed, err := parser.Parse(text)
+	batchText, adjustedLine := parser.BatchAtLine(text, params.Position.Line)
+	parsed, err := parser.Parse(batchText)
 	if err != nil {
 		return nil, err
 	}
 
 	pos := token.Pos{
-		Line: params.Position.Line,
+		Line: adjustedLine,
 		Col:  params.Position.Character,
 	}
 

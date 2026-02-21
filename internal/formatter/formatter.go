@@ -16,34 +16,43 @@ func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config
 	if text == "" {
 		return nil, errors.New("empty")
 	}
-	parsed, err := parser.Parse(text)
-	if err != nil {
-		return nil, err
-	}
 
-	st := lsp.Position{
-		Line:      parsed.Pos().Line,
-		Character: parsed.Pos().Col,
-	}
-	en := lsp.Position{
-		Line:      parsed.End().Line,
-		Character: parsed.End().Col,
-	}
-	env := &formatEnvironment{
-		options: params.Options,
-	}
-	formatted := Eval(parsed, env)
-
+	batches := parser.SplitBatches(text)
 	opts := &ast.RenderOptions{
 		LowerCase: cfg.LowercaseKeywords,
 	}
+
+	var formattedParts []string
+	for _, batch := range batches {
+		if strings.TrimSpace(batch.Text) == "" {
+			formattedParts = append(formattedParts, "")
+			continue
+		}
+		parsed, err := parser.Parse(batch.Text)
+		if err != nil {
+			return nil, err
+		}
+		env := &formatEnvironment{
+			options: params.Options,
+		}
+		formatted := Eval(parsed, env)
+		formattedParts = append(formattedParts, formatted.Render(opts))
+	}
+
+	newText := strings.Join(formattedParts, "\nGO\n")
+
+	// Compute range covering entire document
+	lines := strings.Split(text, "\n")
+	lastLine := len(lines) - 1
+	lastChar := len(lines[lastLine])
+
 	res := []lsp.TextEdit{
 		{
 			Range: lsp.Range{
-				Start: st,
-				End:   en,
+				Start: lsp.Position{Line: 0, Character: 0},
+				End:   lsp.Position{Line: lastLine, Character: lastChar},
 			},
-			NewText: formatted.Render(opts),
+			NewText: newText,
 		},
 	}
 	return res, nil

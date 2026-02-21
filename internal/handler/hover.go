@@ -48,11 +48,12 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp
 		return nil, nil
 	}
 
+	batchText, adjustedLine := parser.BatchAtLine(text, params.Position.Line)
 	pos := token.Pos{
-		Line: params.Position.Line,
+		Line: adjustedLine,
 		Col:  params.Position.Character + 1,
 	}
-	parsed, err := parser.Parse(text)
+	parsed, err := parser.Parse(batchText)
 	if err != nil {
 		return nil, err
 	}

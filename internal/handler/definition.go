@@ -34,11 +34,12 @@ func (s *Server) handleDefinition(ctx context.Context, conn *jsonrpc2.Conn, req 
 }
 
 func definition(url, text string, params lsp.DefinitionParams, dbCache *database.DBCache) (lsp.Definition, error) {
+	batchText, adjustedLine := parser.BatchAtLine(text, params.Position.Line)
 	pos := token.Pos{
-		Line: params.Position.Line,
+		Line: adjustedLine,
 		Col:  params.Position.Character + 1,
 	}
-	parsed, err := parser.Parse(text)
+	parsed, err := parser.Parse(batchText)
 	if err != nil {
 		return nil, err
 	}

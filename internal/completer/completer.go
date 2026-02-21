@@ -90,13 +90,14 @@ func completionTypeIs(completionTypes []completionType, expect completionType) b
 }
 
 func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercaseKeywords bool) ([]lsp.CompletionItem, error) {
-	parsed, err := parser.Parse(text)
+	batchText, adjustedLine := parser.BatchAtLine(text, params.Position.Line)
+	parsed, err := parser.Parse(batchText)
 	if err != nil {
 		return nil, err
 	}
 
 	pos := token.Pos{
-		Line: params.Position.Line,
+		Line: adjustedLine,
 		Col:  params.Position.Character,
 	}
 
@@ -115,7 +116,7 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 		return nil, err
 	}
 
-	lastWord := getLastWord(text, params.Position.Line+1, params.Position.Character)
+	lastWord := getLastWord(batchText, adjustedLine+1, params.Position.Character)
 	withBackQuote := strings.HasPrefix(lastWord, "`")
 
 	var items []lsp.CompletionItem
