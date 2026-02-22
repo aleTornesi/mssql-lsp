@@ -710,7 +710,10 @@ func parseCase(reader *astutil.NodeReader) ast.Node {
 		}
 		nodes = append(nodes, tmpReader.CurNode)
 	}
-	return reader.Node
+	// Tolerant: no END found, wrap collected tokens in SwitchCase
+	reader.Index = tmpReader.Index
+	reader.CurNode = tmpReader.CurNode
+	return &ast.SwitchCase{Toks: nodes}
 }
 
 // BEGIN TRY...END TRY BEGIN CATCH...END CATCH

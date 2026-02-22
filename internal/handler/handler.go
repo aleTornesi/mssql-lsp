@@ -174,6 +174,7 @@ func (s *Server) handleTextDocumentDidOpen(ctx context.Context, conn *jsonrpc2.C
 	if err := s.updateFile(params.TextDocument.URI, params.TextDocument.Text); err != nil {
 		return nil, err
 	}
+	s.publishDiagnostics(ctx, conn, params.TextDocument.URI, params.TextDocument.Text)
 	return nil, nil
 }
 
@@ -190,6 +191,7 @@ func (s *Server) handleTextDocumentDidChange(ctx context.Context, conn *jsonrpc2
 	if err := s.updateFile(params.TextDocument.URI, params.ContentChanges[0].Text); err != nil {
 		return nil, err
 	}
+	s.publishDiagnostics(ctx, conn, params.TextDocument.URI, params.ContentChanges[0].Text)
 	return nil, nil
 }
 
@@ -227,6 +229,7 @@ func (s *Server) handleTextDocumentDidClose(ctx context.Context, conn *jsonrpc2.
 	if err := s.closeFile(params.TextDocument.URI); err != nil {
 		return nil, err
 	}
+	s.clearDiagnostics(ctx, conn, params.TextDocument.URI)
 	return nil, nil
 }
 

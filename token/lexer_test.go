@@ -855,10 +855,14 @@ test
 				tokenizer := NewTokenizer(bytes.NewBufferString(c.src), &dialect.MSSQLDialect{})
 
 				_, err := tokenizer.Tokenize()
-				if err == nil {
-					t.Errorf("must be error but blank")
+				if err != nil {
+					t.Errorf("unexpected error: %+v", err)
 				}
-				t.Logf("%+v", err)
+				diags := tokenizer.GetDiagnostics()
+				if len(diags) == 0 {
+					t.Errorf("expected diagnostics but got none")
+				}
+				t.Logf("diagnostics: %+v", diags)
 
 			})
 		}

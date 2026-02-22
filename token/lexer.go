@@ -107,11 +107,25 @@ func ComparePos(x, y Pos) int {
 	return -1
 }
 
+// LexDiagnostic represents a diagnostic found during tokenization.
+type LexDiagnostic struct {
+	From    Pos
+	To      Pos
+	Message string
+	Code    string
+}
+
 type Tokenizer struct {
-	Dialect dialect.Dialect
-	Scanner *scanner.Scanner
-	Line    int
-	Col     int
+	Dialect     dialect.Dialect
+	Scanner     *scanner.Scanner
+	Line        int
+	Col         int
+	diagnostics []LexDiagnostic
+}
+
+// GetDiagnostics returns diagnostics collected during tokenization.
+func (t *Tokenizer) GetDiagnostics() []LexDiagnostic {
+	return t.diagnostics
 }
 
 func NewTokenizer(src io.Reader, dialect dialect.Dialect) *Tokenizer {
@@ -128,14 +142,29 @@ func (t *Tokenizer) Tokenize() ([]*Token, error) {
 	var tokenset []*Token
 
 	for {
-		t, err := t.NextToken()
+		tok, err := t.NextToken()
 		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
+			// Collect ILLEGAL token diagnostic and continue
+			if tok != nil && tok.Kind == ILLEGAL {
+				val := ""
+				if s, ok := tok.Value.(string); ok {
+					val = s
+				}
+				t.diagnostics = append(t.diagnostics, LexDiagnostic{
+					From:    tok.From,
+					To:      tok.To,
+					Message: fmt.Sprintf("illegal character: '%s'", val),
+					Code:    "TSQL008",
+				})
+				tokenset = append(tokenset, tok)
+				continue
+			}
 			return nil, err
 		}
-		tokenset = append(tokenset, t)
+		tokenset = append(tokenset, tok)
 	}
 
 	return tokenset, nil
@@ -195,7 +224,16 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 		n := t.Scanner.Peek()
 		if n == '\'' {
 			t.Col++
+			startPos := t.Pos()
 			str := t.tokenizeSingleQuotedString()
+			if !strings.HasSuffix(str, "'") {
+				t.diagnostics = append(t.diagnostics, LexDiagnostic{
+					From:    startPos,
+					To:      t.Pos(),
+					Message: "unclosed string literal",
+					Code:    "TSQL002",
+				})
+			}
 			return NationalStringLiteral, str, nil
 		}
 		s := t.tokenizeWord('N')
@@ -208,11 +246,30 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 		return SQLKeyword, MakeKeyword(s, 0), nil
 
 	case r == '\'':
+		startPos := t.Pos()
 		s := t.tokenizeSingleQuotedString()
+		if !strings.HasSuffix(s, "'") {
+			t.diagnostics = append(t.diagnostics, LexDiagnostic{
+				From:    startPos,
+				To:      t.Pos(),
+				Message: "unclosed string literal",
+				Code:    "TSQL002",
+			})
+		}
 		return SingleQuotedString, s, nil
 
 	case t.Dialect.IsDelimitedIdentifierStart(r):
+		startPos := t.Pos()
 		s := t.tokenizeDelimitedIdentifier(r)
+		// Check if bracket identifier was closed
+		if r == '[' && s.QuoteStyle == 0 {
+			t.diagnostics = append(t.diagnostics, LexDiagnostic{
+				From:    startPos,
+				To:      t.Pos(),
+				Message: "unclosed bracket identifier",
+				Code:    "TSQL003",
+			})
+		}
 		return SQLKeyword, s, nil
 
 	case '0' <= r && r <= '9':
@@ -282,9 +339,15 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 
 		if t.Scanner.Peek() == '*' {
 			t.Scanner.Next()
-			str, err := t.tokenizeMultilineComment()
-			if err != nil {
-				return ILLEGAL, str, err
+			startPos := Pos{Line: t.Line, Col: t.Col - 2}
+			str, closed := t.tokenizeMultilineComment()
+			if !closed {
+				t.diagnostics = append(t.diagnostics, LexDiagnostic{
+					From:    startPos,
+					To:      t.Pos(),
+					Message: "unclosed multiline comment",
+					Code:    "TSQL001",
+				})
 			}
 			return MultilineComment, str, nil
 		}
@@ -324,7 +387,8 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 			t.Col += 2
 			return Neq, "!=", nil
 		}
-		return ILLEGAL, "", fmt.Errorf("tokenizer error: illegal sequence %s%s", string(r), string(n))
+		t.Col++
+		return ILLEGAL, string(r), fmt.Errorf("tokenizer error: illegal sequence %s%s", string(r), string(n))
 
 	case r == '<':
 		t.Scanner.Next()
@@ -479,7 +543,7 @@ func (t *Tokenizer) tokenizeDelimitedIdentifier(r rune) *SQLWord {
 	return MakeKeyword(string(r)+string(s), 0)
 }
 
-func (t *Tokenizer) tokenizeMultilineComment() (string, error) {
+func (t *Tokenizer) tokenizeMultilineComment() (string, bool) {
 	var str []rune
 	var mayBeClosingComment bool
 	t.Col += 2
@@ -497,7 +561,7 @@ func (t *Tokenizer) tokenizeMultilineComment() (string, error) {
 			t.Col = 0
 			t.Line++
 		case scanner.EOF:
-			return "", fmt.Errorf("unclosed multiline comment: %s at %+v", string(str), t.Pos())
+			return string(str), false
 		default:
 			t.Col++
 		}
@@ -515,5 +579,5 @@ func (t *Tokenizer) tokenizeMultilineComment() (string, error) {
 		}
 	}
 
-	return string(str), nil
+	return string(str), true
 }
