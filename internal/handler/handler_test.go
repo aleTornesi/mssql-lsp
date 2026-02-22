@@ -128,10 +128,24 @@ func TestInitialized(t *testing.T) {
 			DocumentHighlightProvider:       true,
 			DocumentFormattingProvider:      true,
 			DocumentRangeFormattingProvider: true,
-			RenameProvider:                  true,
+			DocumentOnTypeFormattingProvider: &lsp.DocumentOnTypeFormattingOptions{
+				FirstTriggerCharacter: "\n",
+			},
+			RenameProvider: map[string]interface{}{
+				"prepareProvider": true,
+			},
+			SelectionRangeProvider:          true,
 			DocumentSymbolProvider:          true,
 			WorkspaceSymbolProvider:         true,
 			FoldingRangeProvider:            true,
+			SemanticTokensProvider: &lsp.SemanticTokensOptions{
+				Legend: lsp.SemanticTokensLegend{
+					TokenTypes:     semanticTokenTypes,
+					TokenModifiers: semanticTokenModifiers,
+				},
+				Full:  true,
+				Range: true,
+			},
 		},
 	}
 	var got lsp.InitializeResult

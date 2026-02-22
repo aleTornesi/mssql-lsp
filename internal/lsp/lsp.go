@@ -55,10 +55,12 @@ type ServerCapabilities struct {
 	DocumentFormattingProvider       bool                             `json:"documentFormattingProvider,omitempty"`
 	DocumentRangeFormattingProvider  bool                             `json:"documentRangeFormattingProvider,omitempty"`
 	DocumentOnTypeFormattingProvider *DocumentOnTypeFormattingOptions `json:"documentOnTypeFormattingProvider,omitempty"`
-	RenameProvider                   bool                             `json:"renameProvider,omitempty"`
+	RenameProvider                   interface{}                      `json:"renameProvider,omitempty"`
 	DocumentLinkProvider             *DocumentLinkOptions             `json:"documentLinkProvider,omitempty"`
 	ColorProvider                    bool                             `json:"colorProvider,omitempty"`
+	SelectionRangeProvider           bool                             `json:"selectionRangeProvider,omitempty"`
 	FoldingRangeProvider             bool                             `json:"foldingRangeProvider,omitempty"`
+	SemanticTokensProvider           *SemanticTokensOptions           `json:"semanticTokensProvider,omitempty"`
 	DeclarationProvider              bool                             `json:"declarationProvider,omitempty"`
 	ExecuteCommandProvider           *ExecuteCommandOptions           `json:"executeCommandProvider,omitempty"`
 }
@@ -80,7 +82,10 @@ type CodeActionOptions struct {
 
 type CodeLensOptions struct{}
 
-type DocumentOnTypeFormattingOptions struct{}
+type DocumentOnTypeFormattingOptions struct {
+	FirstTriggerCharacter string   `json:"firstTriggerCharacter"`
+	MoreTriggerCharacter  []string `json:"moreTriggerCharacter,omitempty"`
+}
 
 type DocumentLinkOptions struct{}
 
@@ -637,8 +642,75 @@ type WorkspaceSymbolParams struct {
 }
 
 type SymbolInformation struct {
-	Name          string   `json:"name"`
+	Name          string     `json:"name"`
 	Kind          SymbolKind `json:"kind"`
-	Location      Location `json:"location"`
-	ContainerName string   `json:"containerName,omitempty"`
+	Location      Location   `json:"location"`
+	ContainerName string     `json:"containerName,omitempty"`
+}
+
+// textDocument/semanticTokens
+
+type SemanticTokensOptions struct {
+	Legend SemanticTokensLegend `json:"legend"`
+	Range  bool                 `json:"range,omitempty"`
+	Full   bool                 `json:"full,omitempty"`
+	WorkDoneProgressOptions
+}
+
+type SemanticTokensLegend struct {
+	TokenTypes     []string `json:"tokenTypes"`
+	TokenModifiers []string `json:"tokenModifiers"`
+}
+
+type SemanticTokensParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	WorkDoneProgressParams
+	PartialResultParams
+}
+
+type SemanticTokensRangeParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Range        Range                  `json:"range"`
+	WorkDoneProgressParams
+	PartialResultParams
+}
+
+type SemanticTokens struct {
+	ResultID string   `json:"resultId,omitempty"`
+	Data     []uint32 `json:"data"`
+}
+
+// textDocument/prepareRename
+
+type PrepareRenameParams struct {
+	TextDocumentPositionParams
+	WorkDoneProgressParams
+}
+
+type PrepareRenameResult struct {
+	Range       Range  `json:"range"`
+	Placeholder string `json:"placeholder"`
+}
+
+// textDocument/selectionRange
+
+type SelectionRangeParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Positions    []Position             `json:"positions"`
+	WorkDoneProgressParams
+	PartialResultParams
+}
+
+type SelectionRange struct {
+	Range  Range          `json:"range"`
+	Parent *SelectionRange `json:"parent,omitempty"`
+}
+
+// textDocument/onTypeFormatting
+
+type DocumentOnTypeFormattingParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Position     Position               `json:"position"`
+	Ch           string                 `json:"ch"`
+	Options      FormattingOptions      `json:"options"`
 }

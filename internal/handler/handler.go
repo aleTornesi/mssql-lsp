@@ -118,6 +118,16 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleTextDocumentDocumentHighlight(ctx, conn, req)
 	case "workspace/symbol":
 		return s.handleWorkspaceSymbol(ctx, conn, req)
+	case "textDocument/semanticTokens/full":
+		return s.handleTextDocumentSemanticTokensFull(ctx, conn, req)
+	case "textDocument/semanticTokens/range":
+		return s.handleTextDocumentSemanticTokensRange(ctx, conn, req)
+	case "textDocument/prepareRename":
+		return s.handleTextDocumentPrepareRename(ctx, conn, req)
+	case "textDocument/selectionRange":
+		return s.handleTextDocumentSelectionRange(ctx, conn, req)
+	case "textDocument/onTypeFormatting":
+		return s.handleTextDocumentOnTypeFormatting(ctx, conn, req)
 	case "window/showMessage":
 		return
 	}
@@ -156,10 +166,22 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 			DocumentHighlightProvider:       true,
 			DocumentFormattingProvider:      true,
 			DocumentRangeFormattingProvider: true,
-			RenameProvider:                  true,
+			DocumentOnTypeFormattingProvider: &lsp.DocumentOnTypeFormattingOptions{
+				FirstTriggerCharacter: "\n",
+			},
+			RenameProvider: lsp.RenameOptions{PrepareProvider: true},
+			SelectionRangeProvider:          true,
 			DocumentSymbolProvider:          true,
 			WorkspaceSymbolProvider:         true,
 			FoldingRangeProvider:            true,
+			SemanticTokensProvider: &lsp.SemanticTokensOptions{
+				Legend: lsp.SemanticTokensLegend{
+					TokenTypes:     semanticTokenTypes,
+					TokenModifiers: semanticTokenModifiers,
+				},
+				Full:  true,
+				Range: true,
+			},
 		},
 	}
 
