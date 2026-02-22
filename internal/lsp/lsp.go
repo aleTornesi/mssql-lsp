@@ -590,5 +590,55 @@ type CodeAction struct {
 }
 
 const (
-	CodeActionKindQuickFix CodeActionKind = "quickfix"
+	CodeActionKindQuickFix  CodeActionKind = "quickfix"
+	CodeActionKindRefactor  CodeActionKind = "refactor"
 )
+
+// textDocument/references
+
+type ReferenceParams struct {
+	TextDocumentPositionParams
+	WorkDoneProgressParams
+	PartialResultParams
+	Context ReferenceContext `json:"context"`
+}
+
+type ReferenceContext struct {
+	IncludeDeclaration bool `json:"includeDeclaration"`
+}
+
+// textDocument/documentHighlight
+
+type DocumentHighlightKind int
+
+const (
+	DocumentHighlightKindText  DocumentHighlightKind = 1
+	DocumentHighlightKindRead  DocumentHighlightKind = 2
+	DocumentHighlightKindWrite DocumentHighlightKind = 3
+)
+
+type DocumentHighlightParams struct {
+	TextDocumentPositionParams
+	WorkDoneProgressParams
+	PartialResultParams
+}
+
+type DocumentHighlight struct {
+	Range Range                 `json:"range"`
+	Kind  DocumentHighlightKind `json:"kind,omitempty"`
+}
+
+// workspace/symbol
+
+type WorkspaceSymbolParams struct {
+	Query string `json:"query"`
+	WorkDoneProgressParams
+	PartialResultParams
+}
+
+type SymbolInformation struct {
+	Name          string   `json:"name"`
+	Kind          SymbolKind `json:"kind"`
+	Location      Location `json:"location"`
+	ContainerName string   `json:"containerName,omitempty"`
+}

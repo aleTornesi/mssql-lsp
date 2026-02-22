@@ -121,13 +121,16 @@ func TestInitialized(t *testing.T) {
 				},
 			},
 			CodeActionProvider: map[string]interface{}{
-				"CodeActionKinds": []interface{}{"quickfix"},
+				"CodeActionKinds": []interface{}{"quickfix", "refactor"},
 			},
 			DefinitionProvider:              true,
+			ReferencesProvider:              true,
+			DocumentHighlightProvider:       true,
 			DocumentFormattingProvider:      true,
 			DocumentRangeFormattingProvider: true,
 			RenameProvider:                  true,
 			DocumentSymbolProvider:          true,
+			WorkspaceSymbolProvider:         true,
 			FoldingRangeProvider:            true,
 		},
 	}

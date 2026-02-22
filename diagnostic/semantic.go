@@ -15,6 +15,9 @@ func CheckSemantics(parsed ast.TokenList, c *Collector) {
 	checkDuplicateVariables(st, c)
 	checkUnreferencedCTEs(parsed, st, c)
 	checkUndefinedVariables(parsed, st, c)
+	checkSetUndeclaredVariable(parsed, st, c)
+	checkTransactionBalance(parsed, c)
+	checkDuplicateCTENames(st, c)
 }
 
 func checkDuplicateVariables(st *parseutil.SymbolTable, c *Collector) {
@@ -115,6 +118,134 @@ func checkVarToken(name string, from, to token.Pos, st *parseutil.SymbolTable, c
 		Message:  fmt.Sprintf("undefined variable: '%s'", name),
 		Code:     CodeUndefinedVariable,
 	})
+}
+
+func checkSetUndeclaredVariable(parsed ast.TokenList, st *parseutil.SymbolTable, c *Collector) {
+	toks := flattenAllTokens(parsed)
+	for i := 0; i < len(toks); i++ {
+		if !matchKW(toks[i], "SET") {
+			continue
+		}
+		j := i + 1
+		for j < len(toks) && isWSToken(toks[j]) {
+			j++
+		}
+		if j >= len(toks) {
+			continue
+		}
+		name := toks[j].String()
+		if !strings.HasPrefix(name, "@") {
+			continue
+		}
+		if strings.HasPrefix(name, "@@") {
+			if builtinVariables[strings.ToUpper(name)] {
+				continue
+			}
+		}
+		if st.Lookup(name) != nil {
+			continue
+		}
+		c.Add(Diagnostic{
+			From:     toks[j].Pos(),
+			To:       toks[j].End(),
+			Severity: Warning,
+			Message:  fmt.Sprintf("SET on undeclared variable: '%s'", name),
+			Code:     CodeSetUndeclaredVariable,
+		})
+	}
+}
+
+func checkTransactionBalance(parsed ast.TokenList, c *Collector) {
+	toks := flattenAllTokens(parsed)
+	beginCount := 0
+	commitCount := 0
+	rollbackCount := 0
+	var firstBegin token.Pos
+	for i := 0; i < len(toks); i++ {
+		if matchKW(toks[i], "BEGIN") {
+			j := i + 1
+			for j < len(toks) && isWSToken(toks[j]) {
+				j++
+			}
+			if j < len(toks) && (matchKW(toks[j], "TRANSACTION") || matchKW(toks[j], "TRAN")) {
+				if beginCount == 0 {
+					firstBegin = toks[i].Pos()
+				}
+				beginCount++
+			}
+		}
+		if matchKW(toks[i], "COMMIT") {
+			j := i + 1
+			for j < len(toks) && isWSToken(toks[j]) {
+				j++
+			}
+			if j >= len(toks) || matchKW(toks[j], "TRANSACTION") || matchKW(toks[j], "TRAN") || toks[j].String() == ";" {
+				commitCount++
+			}
+		}
+		if matchKW(toks[i], "ROLLBACK") {
+			j := i + 1
+			for j < len(toks) && isWSToken(toks[j]) {
+				j++
+			}
+			if j >= len(toks) || matchKW(toks[j], "TRANSACTION") || matchKW(toks[j], "TRAN") || toks[j].String() == ";" {
+				rollbackCount++
+			}
+		}
+	}
+	endCount := commitCount + rollbackCount
+	if beginCount > 0 && endCount == 0 {
+		c.Add(Diagnostic{
+			From:     firstBegin,
+			To:       token.Pos{Line: firstBegin.Line, Col: firstBegin.Col + 5},
+			Severity: Warning,
+			Message:  fmt.Sprintf("BEGIN TRANSACTION without matching COMMIT/ROLLBACK (%d open)", beginCount),
+			Code:     CodeTransactionMismatch,
+		})
+	}
+}
+
+func checkDuplicateCTENames(st *parseutil.SymbolTable, c *Collector) {
+	seen := make(map[string]*parseutil.Symbol)
+	for _, sym := range st.Symbols {
+		if sym.Kind != parseutil.SymbolCTE {
+			continue
+		}
+		key := strings.ToUpper(sym.Name)
+		if _, exists := seen[key]; exists {
+			c.Add(Diagnostic{
+				From:     sym.Pos,
+				To:       sym.EndPos,
+				Severity: Error,
+				Message:  fmt.Sprintf("duplicate CTE name: '%s'", sym.Name),
+				Code:     CodeDuplicateCTE,
+			})
+		} else {
+			seen[key] = sym
+		}
+	}
+}
+
+// flattenAllTokens collects all leaf nodes preserving order.
+func flattenAllTokens(tl ast.TokenList) []ast.Node {
+	var result []ast.Node
+	for _, node := range tl.GetTokens() {
+		if inner, ok := node.(ast.TokenList); ok {
+			result = append(result, flattenAllTokens(inner)...)
+		} else {
+			result = append(result, node)
+		}
+	}
+	return result
+}
+
+func matchKW(node ast.Node, kw string) bool {
+	return strings.EqualFold(strings.TrimSpace(node.String()), kw)
+}
+
+func isWSToken(node ast.Node) bool {
+	s := node.String()
+	return strings.TrimSpace(s) == ""
 }
 
 func checkUnreferencedCTEs(parsed ast.TokenList, st *parseutil.SymbolTable, c *Collector) {

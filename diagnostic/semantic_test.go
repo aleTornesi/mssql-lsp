@@ -108,6 +108,138 @@ func TestCheckSemantics_UndefinedVariable(t *testing.T) {
 	}
 }
 
+func TestCheckSemantics_SetUndeclaredVariable(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantCount int
+	}{
+		{
+			name:      "SET on undeclared",
+			input:     "SET @x = 1",
+			wantCount: 1,
+		},
+		{
+			name:      "SET on declared",
+			input:     "DECLARE @x INT\nSET @x = 1",
+			wantCount: 0,
+		},
+		{
+			name:      "SET on builtin",
+			input:     "SET @x = @@ROWCOUNT",
+			wantCount: 1, // @x is undeclared, @@ROWCOUNT is builtin
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := parser.Parse(tt.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			c := &Collector{}
+			CheckSemantics(parsed, c)
+			count := 0
+			for _, d := range c.Diagnostics {
+				if d.Code == CodeSetUndeclaredVariable {
+					count++
+				}
+			}
+			if count != tt.wantCount {
+				t.Errorf("got %d diagnostics with code %s, want %d", count, CodeSetUndeclaredVariable, tt.wantCount)
+			}
+		})
+	}
+}
+
+func TestCheckSemantics_TransactionMismatch(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantCount int
+	}{
+		{
+			name:      "unmatched BEGIN TRAN",
+			input:     "BEGIN TRANSACTION",
+			wantCount: 1,
+		},
+		{
+			name:      "matched BEGIN TRAN COMMIT",
+			input:     "BEGIN TRANSACTION\nCOMMIT",
+			wantCount: 0,
+		},
+		{
+			name:      "matched BEGIN TRAN ROLLBACK",
+			input:     "BEGIN TRAN\nROLLBACK",
+			wantCount: 0,
+		},
+		{
+			name:      "no transaction",
+			input:     "SELECT 1",
+			wantCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := parser.Parse(tt.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			c := &Collector{}
+			CheckSemantics(parsed, c)
+			count := 0
+			for _, d := range c.Diagnostics {
+				if d.Code == CodeTransactionMismatch {
+					count++
+				}
+			}
+			if count != tt.wantCount {
+				t.Errorf("got %d diagnostics with code %s, want %d", count, CodeTransactionMismatch, tt.wantCount)
+			}
+		})
+	}
+}
+
+func TestCheckSemantics_DuplicateCTE(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantCount int
+	}{
+		{
+			name:      "duplicate CTE",
+			input:     "WITH cte AS (SELECT 1), cte AS (SELECT 2) SELECT 1",
+			wantCount: 1,
+		},
+		{
+			name:      "unique CTEs",
+			input:     "WITH a AS (SELECT 1), b AS (SELECT 2) SELECT 1",
+			wantCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := parser.Parse(tt.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			c := &Collector{}
+			CheckSemantics(parsed, c)
+			count := 0
+			for _, d := range c.Diagnostics {
+				if d.Code == CodeDuplicateCTE {
+					count++
+				}
+			}
+			if count != tt.wantCount {
+				t.Errorf("got %d diagnostics with code %s, want %d", count, CodeDuplicateCTE, tt.wantCount)
+			}
+		})
+	}
+}
+
 func TestCheckSemantics_UnreferencedCTE(t *testing.T) {
 	tests := []struct {
 		name      string

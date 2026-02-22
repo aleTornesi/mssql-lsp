@@ -44,9 +44,20 @@ func (s *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 			}
 		case "TSQL004": // unclosed BEGIN
 			actions = append(actions, codeActionAddEnd(uri, diag))
+		case "TSQL005": // unclosed TRY/CATCH
+			actions = append(actions, codeActionAddEndCatch(uri, diag))
+		case "TSQL006": // unclosed paren
+			actions = append(actions, codeActionAddCloseParen(uri, diag))
 		case "TSQL007": // unclosed CASE
 			actions = append(actions, codeActionAddEnd(uri, diag))
+		case "TSQL010": // duplicate variable
+			actions = append(actions, codeActionRemoveDuplicateDecl(uri, f.Text, diag))
 		}
+	}
+
+	// Selection-based refactoring: surround with TRY/CATCH
+	if params.Range.Start != params.Range.End {
+		actions = append(actions, codeActionSurroundTryCatch(uri, params.Range))
 	}
 
 	if len(actions) == 0 {
@@ -90,6 +101,101 @@ func codeActionAddEnd(uri string, diag lsp.Diagnostic) lsp.CodeAction {
 							End:   lsp.Position{Line: insertLine, Character: 0},
 						},
 						NewText: "END\n",
+					},
+				},
+			},
+		},
+	}
+}
+
+func codeActionAddEndCatch(uri string, diag lsp.Diagnostic) lsp.CodeAction {
+	endPos := diag.Range.End
+	insertLine := endPos.Line + 1
+	return lsp.CodeAction{
+		Title:       "Add missing END CATCH",
+		Kind:        lsp.CodeActionKindQuickFix,
+		Diagnostics: []lsp.Diagnostic{diag},
+		Edit: &lsp.WorkspaceEdit{
+			Changes: map[string][]lsp.TextEdit{
+				uri: {
+					{
+						Range: lsp.Range{
+							Start: lsp.Position{Line: insertLine, Character: 0},
+							End:   lsp.Position{Line: insertLine, Character: 0},
+						},
+						NewText: "END CATCH\n",
+					},
+				},
+			},
+		},
+	}
+}
+
+func codeActionAddCloseParen(uri string, diag lsp.Diagnostic) lsp.CodeAction {
+	endPos := diag.Range.End
+	return lsp.CodeAction{
+		Title:       "Add missing closing parenthesis",
+		Kind:        lsp.CodeActionKindQuickFix,
+		Diagnostics: []lsp.Diagnostic{diag},
+		Edit: &lsp.WorkspaceEdit{
+			Changes: map[string][]lsp.TextEdit{
+				uri: {
+					{
+						Range: lsp.Range{
+							Start: endPos,
+							End:   endPos,
+						},
+						NewText: ")",
+					},
+				},
+			},
+		},
+	}
+}
+
+func codeActionRemoveDuplicateDecl(uri, text string, diag lsp.Diagnostic) lsp.CodeAction {
+	// Remove the line containing the duplicate declaration
+	startLine := diag.Range.Start.Line
+	return lsp.CodeAction{
+		Title:       "Remove duplicate declaration",
+		Kind:        lsp.CodeActionKindQuickFix,
+		Diagnostics: []lsp.Diagnostic{diag},
+		Edit: &lsp.WorkspaceEdit{
+			Changes: map[string][]lsp.TextEdit{
+				uri: {
+					{
+						Range: lsp.Range{
+							Start: lsp.Position{Line: startLine, Character: diag.Range.Start.Character},
+							End:   lsp.Position{Line: diag.Range.End.Line, Character: diag.Range.End.Character},
+						},
+						NewText: "",
+					},
+				},
+			},
+		},
+	}
+}
+
+func codeActionSurroundTryCatch(uri string, r lsp.Range) lsp.CodeAction {
+	return lsp.CodeAction{
+		Title: "Surround with TRY/CATCH",
+		Kind:  lsp.CodeActionKindRefactor,
+		Edit: &lsp.WorkspaceEdit{
+			Changes: map[string][]lsp.TextEdit{
+				uri: {
+					{
+						Range: lsp.Range{
+							Start: r.Start,
+							End:   r.Start,
+						},
+						NewText: "BEGIN TRY\n",
+					},
+					{
+						Range: lsp.Range{
+							Start: r.End,
+							End:   r.End,
+						},
+						NewText: "\nEND TRY\nBEGIN CATCH\nEND CATCH",
 					},
 				},
 			},

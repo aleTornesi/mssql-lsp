@@ -10,6 +10,7 @@ import (
 // CheckStructure walks the AST and reports structural errors.
 func CheckStructure(root ast.TokenList, c *Collector) {
 	walkTokenList(root, c)
+	checkOrphanElse(root, c)
 }
 
 func walkTokenList(tl ast.TokenList, c *Collector) {
@@ -121,6 +122,36 @@ func checkSwitchCase(sc *ast.SwitchCase, c *Collector) {
 
 func isKeywordNode(node ast.Node, kw string) bool {
 	return strings.EqualFold(strings.TrimSpace(node.String()), kw)
+}
+
+// checkOrphanElse reports ELSE keywords that appear outside an IfStatement node.
+func checkOrphanElse(root ast.TokenList, c *Collector) {
+	findOrphanElse(root, false, c)
+}
+
+func findOrphanElse(tl ast.TokenList, insideIf bool, c *Collector) {
+	for _, node := range tl.GetTokens() {
+		switch n := node.(type) {
+		case *ast.IfStatement:
+			findOrphanElse(n, true, c)
+		case *ast.BeginEnd:
+			findOrphanElse(n, false, c)
+		case *ast.TryCatch:
+			findOrphanElse(n, false, c)
+		case ast.TokenList:
+			findOrphanElse(n, insideIf, c)
+		default:
+			if !insideIf && strings.EqualFold(strings.TrimSpace(n.String()), "ELSE") {
+				c.Add(Diagnostic{
+					From:     n.Pos(),
+					To:       token.Pos{Line: n.Pos().Line, Col: n.Pos().Col + 4},
+					Severity: Error,
+					Message:  "ELSE without matching IF",
+					Code:     CodeOrphanElse,
+				})
+			}
+		}
+	}
 }
 
 // endPos returns a position one character past from, for point diagnostics.

@@ -112,6 +112,12 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleTextDocumentFoldingRange(ctx, conn, req)
 	case "textDocument/documentSymbol":
 		return s.handleTextDocumentDocumentSymbol(ctx, conn, req)
+	case "textDocument/references":
+		return s.handleTextDocumentReferences(ctx, conn, req)
+	case "textDocument/documentHighlight":
+		return s.handleTextDocumentDocumentHighlight(ctx, conn, req)
+	case "workspace/symbol":
+		return s.handleWorkspaceSymbol(ctx, conn, req)
 	case "window/showMessage":
 		return
 	}
@@ -133,7 +139,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 			TextDocumentSync:   lsp.TDSKFull,
 			HoverProvider:      true,
 			CodeActionProvider: lsp.CodeActionOptions{
-				CodeActionKinds: []lsp.CodeActionKind{lsp.CodeActionKindQuickFix},
+				CodeActionKinds: []lsp.CodeActionKind{lsp.CodeActionKindQuickFix, lsp.CodeActionKindRefactor},
 			},
 			CompletionProvider: &lsp.CompletionOptions{
 				TriggerCharacters: []string{"(", "."},
@@ -146,10 +152,13 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 				},
 			},
 			DefinitionProvider:              true,
+			ReferencesProvider:              true,
+			DocumentHighlightProvider:       true,
 			DocumentFormattingProvider:      true,
 			DocumentRangeFormattingProvider: true,
 			RenameProvider:                  true,
 			DocumentSymbolProvider:          true,
+			WorkspaceSymbolProvider:         true,
 			FoldingRangeProvider:            true,
 		},
 	}
