@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/atornesi/tsql-ls/dialect"
 	"github.com/atornesi/tsql-ls/internal/database"
 	"github.com/atornesi/tsql-ls/internal/lsp"
 	"github.com/atornesi/tsql-ls/parser/parseutil"
@@ -431,6 +432,44 @@ func subQueryColumnDetail(subQueryAliasName string) string {
 		" ",
 	)
 	return detail
+}
+
+func systemProcCandidates() []lsp.CompletionItem {
+	var items []lsp.CompletionItem
+	for _, sp := range dialect.MSSQLSystemProcedures() {
+		items = append(items, lsp.CompletionItem{
+			Label:  sp.Name,
+			Kind:   lsp.FunctionCompletion,
+			Detail: sp.Detail,
+			Documentation: &lsp.MarkupContent{
+				Kind:  lsp.Markdown,
+				Value: sp.Doc,
+			},
+		})
+	}
+	for _, dmv := range dialect.MSSQLDMVs() {
+		items = append(items, lsp.CompletionItem{
+			Label:  dmv.Name,
+			Kind:   lsp.FunctionCompletion,
+			Detail: dmv.Detail,
+			Documentation: &lsp.MarkupContent{
+				Kind:  lsp.Markdown,
+				Value: dmv.Doc,
+			},
+		})
+	}
+	for _, sv := range dialect.MSSQLSystemViews() {
+		items = append(items, lsp.CompletionItem{
+			Label:  sv.Name,
+			Kind:   lsp.ClassCompletion,
+			Detail: sv.Detail,
+			Documentation: &lsp.MarkupContent{
+				Kind:  lsp.Markdown,
+				Value: sv.Doc,
+			},
+		})
+	}
+	return items
 }
 
 func (c *Completer) SchemaCandidates() []lsp.CompletionItem {

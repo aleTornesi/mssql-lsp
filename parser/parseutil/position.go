@@ -19,6 +19,7 @@ const (
 	InsertValue    SyntaxPosition = "insert_value"
 	JoinClause     SyntaxPosition = "join_clause"
 	JoinOn         SyntaxPosition = "join_on"
+	ExecStatement  SyntaxPosition = "exec_statement"
 	Unknown        SyntaxPosition = "unknown"
 )
 
@@ -82,6 +83,11 @@ func CheckSyntaxPosition(nw *NodeWalker) SyntaxPosition {
 		"TRUNCATE",
 	})):
 		res = TableReference
+	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
+		"EXEC",
+		"EXECUTE",
+	})):
+		res = ExecStatement
 	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
 		"ON",
 	})):

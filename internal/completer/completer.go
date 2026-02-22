@@ -34,6 +34,8 @@ const (
 	CompletionTypeSchema
 	CompletionTypeJoin
 	CompletionTypeJoinOn
+	CompletionTypeSystemProc
+	CompletionTypeSnippet
 )
 
 func (ct completionType) String() string {
@@ -64,6 +66,10 @@ func (ct completionType) String() string {
 		return "Join clause"
 	case CompletionTypeJoinOn:
 		return "Join On condition"
+	case CompletionTypeSystemProc:
+		return "SystemProc"
+	case CompletionTypeSnippet:
+		return "Snippet"
 	default:
 		return ""
 	}
@@ -193,6 +199,12 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 	if completionTypeIs(ctx.types, CompletionTypeFunction) {
 		drivers := dialect.DataBaseFunctions(c.Driver)
 		items = append(items, c.functionCandidates(lowercaseKeywords, drivers)...)
+	}
+	if completionTypeIs(ctx.types, CompletionTypeSystemProc) {
+		items = append(items, systemProcCandidates()...)
+	}
+	if completionTypeIs(ctx.types, CompletionTypeSnippet) {
+		items = append(items, snippetCandidates()...)
 	}
 
 	items = filterCandidates(items, lastWord)
@@ -339,6 +351,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeTable,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
+				CompletionTypeSystemProc,
 			}
 			p = &completionParent{
 				Type: ParentTypeSchema,
@@ -351,7 +364,12 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeSchema,
 				CompletionTypeView,
 				CompletionTypeSubQuery,
+				CompletionTypeSystemProc,
 			}
+		}
+	case syntaxPos == parseutil.ExecStatement:
+		t = []completionType{
+			CompletionTypeSystemProc,
 		}
 	case syntaxPos == parseutil.WhereCondition:
 		if nw.CurNodeIs(memberIdentifierMatcher) {
@@ -402,6 +420,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 	default:
 		t = []completionType{
 			CompletionTypeKeyword,
+			CompletionTypeSnippet,
 		}
 	}
 	return &CompletionContext{

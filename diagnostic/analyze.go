@@ -49,6 +49,7 @@ func AnalyzeBatch(text string) *Collector {
 		return c
 	}
 	CheckStructure(parsed, c)
+	CheckSemantics(parsed, c)
 
 	return c
 }

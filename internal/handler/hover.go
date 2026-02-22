@@ -44,10 +44,6 @@ func (s *Server) handleTextDocumentHover(ctx context.Context, conn *jsonrpc2.Con
 }
 
 func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp.Hover, error) {
-	if dbCache == nil {
-		return nil, nil
-	}
-
 	batchText, adjustedLine := parser.BatchAtLine(text, params.Position.Line)
 	pos := token.Pos{
 		Line: adjustedLine,
@@ -71,6 +67,32 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp
 		return nil, ErrNoHover
 	}
 	ident, memIdent := findIdent(focusedIdentNodes)
+
+	// Check symbol table for variables, CTEs, temp tables
+	if ident != nil {
+		identName := ident.NoQuoteString()
+		st := parseutil.ExtractSymbols(parsed)
+		if sym := st.Lookup(identName); sym != nil {
+			content := symbolHoverContent(sym)
+			return &lsp.Hover{
+				Contents: *content,
+				Range: lsp.Range{
+					Start: lsp.Position{
+						Line:      ident.Pos().Line,
+						Character: ident.Pos().Col,
+					},
+					End: lsp.Position{
+						Line:      ident.End().Line,
+						Character: ident.End().Col,
+					},
+				},
+			}, nil
+		}
+	}
+
+	if dbCache == nil {
+		return nil, ErrNoHover
+	}
 
 	// Collect environment
 	hoverEnv, err := collectEnvironment(parsed, pos)
@@ -349,6 +371,23 @@ func subqueryColumnHoverInfo(identName string, subQuery *parseutil.SubQueryInfo,
 	return &lsp.MarkupContent{
 		Kind:  lsp.Markdown,
 		Value: database.SubqueryColumnDoc(identName, subQuery.Views, dbCache),
+	}
+}
+
+func symbolHoverContent(sym *parseutil.Symbol) *lsp.MarkupContent {
+	var value string
+	switch sym.Kind {
+	case parseutil.SymbolVariable:
+		value = fmt.Sprintf("**%s** %s", sym.Name, sym.DataType)
+		value += fmt.Sprintf("\n\n(declared at line %d)", sym.Pos.Line+1)
+	case parseutil.SymbolCTE:
+		value = fmt.Sprintf("**%s** Common Table Expression", sym.Name)
+	case parseutil.SymbolTempTable:
+		value = fmt.Sprintf("**%s** Temporary Table", sym.Name)
+	}
+	return &lsp.MarkupContent{
+		Kind:  lsp.Markdown,
+		Value: value,
 	}
 }
 

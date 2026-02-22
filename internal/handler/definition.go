@@ -33,8 +33,9 @@ func (s *Server) handleDefinition(ctx context.Context, conn *jsonrpc2.Conn, req 
 	return definition(params.TextDocument.URI, f.Text, params, s.worker.Cache())
 }
 
-func definition(url, text string, params lsp.DefinitionParams, dbCache *database.DBCache) (lsp.Definition, error) {
+func definition(uri, text string, params lsp.DefinitionParams, dbCache *database.DBCache) (lsp.Definition, error) {
 	batchText, adjustedLine := parser.BatchAtLine(text, params.Position.Line)
+	batchStartLine := params.Position.Line - adjustedLine
 	pos := token.Pos{
 		Line: adjustedLine,
 		Col:  params.Position.Character + 1,
@@ -53,6 +54,29 @@ func definition(url, text string, params lsp.DefinitionParams, dbCache *database
 		return nil, nil
 	}
 
+	name := currentVariable.String()
+
+	// Check symbol table (variables, CTEs, temp tables)
+	st := parseutil.ExtractSymbols(parsed)
+	if sym := st.Lookup(name); sym != nil {
+		return []lsp.Location{
+			{
+				URI: uri,
+				Range: lsp.Range{
+					Start: lsp.Position{
+						Line:      sym.Pos.Line + batchStartLine,
+						Character: sym.Pos.Col,
+					},
+					End: lsp.Position{
+						Line:      sym.EndPos.Line + batchStartLine,
+						Character: sym.EndPos.Col,
+					},
+				},
+			},
+		}, nil
+	}
+
+	// Fall back to alias lookup
 	aliases := parseutil.ExtractAliased(parsed)
 	if len(aliases) == 0 {
 		return nil, nil
@@ -61,7 +85,7 @@ func definition(url, text string, params lsp.DefinitionParams, dbCache *database
 	var define ast.Node
 	for _, v := range aliases {
 		alias, _ := v.(*ast.Aliased)
-		if alias.AliasedName.String() == currentVariable.String() {
+		if alias.AliasedName.String() == name {
 			define = alias.AliasedName
 			break
 		}
@@ -73,14 +97,14 @@ func definition(url, text string, params lsp.DefinitionParams, dbCache *database
 
 	res := []lsp.Location{
 		{
-			URI: url,
+			URI: uri,
 			Range: lsp.Range{
 				Start: lsp.Position{
-					Line:      define.Pos().Line,
+					Line:      define.Pos().Line + batchStartLine,
 					Character: define.Pos().Col,
 				},
 				End: lsp.Position{
-					Line:      define.End().Line,
+					Line:      define.End().Line + batchStartLine,
 					Character: define.End().Col,
 				},
 			},

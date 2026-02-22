@@ -48,6 +48,8 @@ func rename(text string, params lsp.RenameParams) (*lsp.WorkspaceEdit, error) {
 		Col:  params.Position.Character,
 	}
 
+	batchStartLine := params.Position.Line - adjustedLine
+
 	// Get the identifier on focus
 	nodeWalker := parseutil.NewNodeWalker(parsed, pos)
 	m := astutil.NodeMatcher{
@@ -58,16 +60,56 @@ func rename(text string, params lsp.RenameParams) (*lsp.WorkspaceEdit, error) {
 		return nil, nil
 	}
 
-	// Get all identifiers in the statement
+	name := currentVariable.String()
+
+	// Try symbol-based rename for variables, CTEs, temp tables
+	st := parseutil.ExtractSymbols(parsed)
+	if sym := st.Lookup(name); sym != nil {
+		refs := st.FindReferences(parsed, name)
+		if len(refs) == 0 {
+			return nil, nil
+		}
+		edits := make([]lsp.TextEdit, len(refs))
+		nameLen := len(name)
+		for i, ref := range refs {
+			edits[i] = lsp.TextEdit{
+				Range: lsp.Range{
+					Start: lsp.Position{
+						Line:      ref.Line + batchStartLine,
+						Character: ref.Col,
+					},
+					End: lsp.Position{
+						Line:      ref.Line + batchStartLine,
+						Character: ref.Col + nameLen,
+					},
+				},
+				NewText: params.NewName,
+			}
+		}
+		return &lsp.WorkspaceEdit{
+			DocumentChanges: []lsp.TextDocumentEdit{
+				{
+					TextDocument: lsp.OptionalVersionedTextDocumentIdentifier{
+						Version: 0,
+						TextDocumentIdentifier: lsp.TextDocumentIdentifier{
+							URI: params.TextDocument.URI,
+						},
+					},
+					Edits: edits,
+				},
+			},
+		}, nil
+	}
+
+	// Fall back to identifier-based rename
 	idents, err := parseutil.ExtractIdenfiers(parsed, pos)
 	if err != nil {
 		return nil, err
 	}
 
-	// Extract only those with matching names
 	renameTarget := []ast.Node{}
 	for _, ident := range idents {
-		if ident.String() == currentVariable.String() {
+		if ident.String() == name {
 			renameTarget = append(renameTarget, ident)
 		}
 	}
@@ -80,11 +122,11 @@ func rename(text string, params lsp.RenameParams) (*lsp.WorkspaceEdit, error) {
 		edit := lsp.TextEdit{
 			Range: lsp.Range{
 				Start: lsp.Position{
-					Line:      target.Pos().Line,
+					Line:      target.Pos().Line + batchStartLine,
 					Character: target.Pos().Col,
 				},
 				End: lsp.Position{
-					Line:      target.End().Line,
+					Line:      target.End().Line + batchStartLine,
 					Character: target.End().Col,
 				},
 			},

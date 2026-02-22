@@ -22,6 +22,8 @@ const (
 	CodeUnclosedParen     = "TSQL006"
 	CodeUnclosedCase      = "TSQL007"
 	CodeIllegalChar       = "TSQL008"
+	CodeDuplicateVariable = "TSQL010"
+	CodeUnreferencedCTE   = "TSQL011"
 )
 
 // Diagnostic represents a single diagnostic finding.
