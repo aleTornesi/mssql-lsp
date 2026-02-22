@@ -45,12 +45,15 @@ func (s *Server) handleTextDocumentRangeFormatting(ctx context.Context, conn *js
 		return nil, err
 	}
 
-	_, ok := s.files[params.TextDocument.URI]
+	f, ok := s.files[params.TextDocument.URI]
 	if !ok {
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
-	textEdits := []lsp.TextEdit{}
+	textEdits, err := formatter.FormatRange(f.Text, params.Range, params.Options, s.getConfig())
+	if err != nil {
+		return nil, err
+	}
 	if len(textEdits) > 0 {
 		return textEdits, nil
 	}

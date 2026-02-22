@@ -12,6 +12,46 @@ import (
 	"github.com/atornesi/tsql-ls/token"
 )
 
+// FormatRange formats only the text within the given range, returning a single TextEdit.
+func FormatRange(text string, r lsp.Range, options lsp.FormattingOptions, cfg *config.Config) ([]lsp.TextEdit, error) {
+	// Expand range to full lines to avoid partial-statement issues
+	lines := strings.Split(text, "\n")
+	startLine := r.Start.Line
+	endLine := r.End.Line
+	if endLine >= len(lines) {
+		endLine = len(lines) - 1
+	}
+
+	// Extract full lines within the range
+	rangeLines := lines[startLine : endLine+1]
+	rangeText := strings.Join(rangeLines, "\n")
+	if strings.TrimSpace(rangeText) == "" {
+		return nil, nil
+	}
+
+	// Format the extracted text
+	fmtParams := lsp.DocumentFormattingParams{Options: options}
+	parsed, err := parser.Parse(rangeText)
+	if err != nil {
+		return nil, err
+	}
+	opts := &ast.RenderOptions{LowerCase: cfg.LowercaseKeywords}
+	env := &formatEnvironment{options: fmtParams.Options}
+	formatted := Eval(parsed, env)
+	newText := formatted.Render(opts)
+
+	endChar := len(lines[endLine])
+	return []lsp.TextEdit{
+		{
+			Range: lsp.Range{
+				Start: lsp.Position{Line: startLine, Character: 0},
+				End:   lsp.Position{Line: endLine, Character: endChar},
+			},
+			NewText: newText,
+		},
+	}, nil
+}
+
 func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config) ([]lsp.TextEdit, error) {
 	if text == "" {
 		return nil, errors.New("empty")

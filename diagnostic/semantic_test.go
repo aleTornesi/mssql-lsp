@@ -48,6 +48,66 @@ func TestCheckSemantics_DuplicateVariable(t *testing.T) {
 	}
 }
 
+func TestCheckSemantics_UndefinedVariable(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantCode  string
+		wantCount int
+	}{
+		{
+			name:      "undefined variable",
+			input:     "SELECT @x",
+			wantCode:  CodeUndefinedVariable,
+			wantCount: 1,
+		},
+		{
+			name:      "declared variable",
+			input:     "DECLARE @x INT; SELECT @x",
+			wantCode:  CodeUndefinedVariable,
+			wantCount: 0,
+		},
+		{
+			name:      "builtin @@ROWCOUNT",
+			input:     "SELECT @@ROWCOUNT",
+			wantCode:  CodeUndefinedVariable,
+			wantCount: 0,
+		},
+		{
+			name:      "builtin @@ERROR",
+			input:     "IF @@ERROR <> 0 SELECT 1",
+			wantCode:  CodeUndefinedVariable,
+			wantCount: 0,
+		},
+		{
+			name:      "multiple undefined",
+			input:     "SELECT @a, @b",
+			wantCode:  CodeUndefinedVariable,
+			wantCount: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := parser.Parse(tt.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			c := &Collector{}
+			CheckSemantics(parsed, c)
+			count := 0
+			for _, d := range c.Diagnostics {
+				if d.Code == tt.wantCode {
+					count++
+				}
+			}
+			if count != tt.wantCount {
+				t.Errorf("got %d diagnostics with code %s, want %d", count, tt.wantCode, tt.wantCount)
+			}
+		})
+	}
+}
+
 func TestCheckSemantics_UnreferencedCTE(t *testing.T) {
 	tests := []struct {
 		name      string

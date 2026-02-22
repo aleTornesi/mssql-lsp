@@ -108,6 +108,10 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleDefinition(ctx, conn, req)
 	case "textDocument/typeDefinition":
 		return s.handleDefinition(ctx, conn, req)
+	case "textDocument/foldingRange":
+		return s.handleTextDocumentFoldingRange(ctx, conn, req)
+	case "textDocument/documentSymbol":
+		return s.handleTextDocumentDocumentSymbol(ctx, conn, req)
 	case "window/showMessage":
 		return
 	}
@@ -128,7 +132,9 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 		Capabilities: lsp.ServerCapabilities{
 			TextDocumentSync:   lsp.TDSKFull,
 			HoverProvider:      true,
-			CodeActionProvider: true,
+			CodeActionProvider: lsp.CodeActionOptions{
+				CodeActionKinds: []lsp.CodeActionKind{lsp.CodeActionKindQuickFix},
+			},
 			CompletionProvider: &lsp.CompletionOptions{
 				TriggerCharacters: []string{"(", "."},
 			},
@@ -143,6 +149,8 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 			DocumentFormattingProvider:      true,
 			DocumentRangeFormattingProvider: true,
 			RenameProvider:                  true,
+			DocumentSymbolProvider:          true,
+			FoldingRangeProvider:            true,
 		},
 	}
 

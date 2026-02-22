@@ -70,6 +70,12 @@ func (ct completionType) String() string {
 		return "SystemProc"
 	case CompletionTypeSnippet:
 		return "Snippet"
+	case CompletionTypeVariable:
+		return "Variable"
+	case CompletionTypeCTE:
+		return "CTE"
+	case CompletionTypeTempTable:
+		return "TempTable"
 	default:
 		return ""
 	}
@@ -190,6 +196,13 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 			}
 			items = append(candidates, items...)
 		}
+	}
+
+	if completionTypeIs(ctx.types, CompletionTypeVariable) ||
+		completionTypeIs(ctx.types, CompletionTypeCTE) ||
+		completionTypeIs(ctx.types, CompletionTypeTempTable) {
+		st := parseutil.ExtractSymbols(parsed)
+		items = append(items, localSymbolCandidates(st)...)
 	}
 
 	if completionTypeIs(ctx.types, CompletionTypeKeyword) {
@@ -314,6 +327,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeSubQuery,
 				CompletionTypeView,
 				CompletionTypeFunction,
+				CompletionTypeVariable,
 			}
 			p = noneParent
 		}
@@ -341,6 +355,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeSubQueryColumn,
 				CompletionTypeSubQuery,
 				CompletionTypeFunction,
+				CompletionTypeVariable,
 			}
 		}
 	case syntaxPos == parseutil.TableReference:
@@ -365,6 +380,8 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeView,
 				CompletionTypeSubQuery,
 				CompletionTypeSystemProc,
+				CompletionTypeCTE,
+				CompletionTypeTempTable,
 			}
 		}
 	case syntaxPos == parseutil.ExecStatement:
@@ -393,6 +410,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeSubQueryColumn,
 				CompletionTypeSubQuery,
 				CompletionTypeFunction,
+				CompletionTypeVariable,
 			}
 		}
 	case syntaxPos == parseutil.JoinClause:
@@ -403,6 +421,8 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 			CompletionTypeSchema,
 			CompletionTypeView,
 			CompletionTypeSubQuery,
+			CompletionTypeCTE,
+			CompletionTypeTempTable,
 		}
 	case syntaxPos == parseutil.JoinOn:
 		t = []completionType{

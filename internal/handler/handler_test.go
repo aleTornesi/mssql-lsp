@@ -120,11 +120,15 @@ func TestInitialized(t *testing.T) {
 					WorkDoneProgress: false,
 				},
 			},
-			CodeActionProvider:              true,
+			CodeActionProvider: map[string]interface{}{
+				"CodeActionKinds": []interface{}{"quickfix"},
+			},
 			DefinitionProvider:              true,
 			DocumentFormattingProvider:      true,
 			DocumentRangeFormattingProvider: true,
 			RenameProvider:                  true,
+			DocumentSymbolProvider:          true,
+			FoldingRangeProvider:            true,
 		},
 	}
 	var got lsp.InitializeResult
