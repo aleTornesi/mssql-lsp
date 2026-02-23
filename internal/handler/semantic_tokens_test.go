@@ -107,6 +107,42 @@ func testRange(startLine, startChar, endLine, endChar int) lsp.Range {
 	}
 }
 
+func TestComputeSemanticTokenEdits(t *testing.T) {
+	tests := []struct {
+		name    string
+		oldData []uint32
+		newData []uint32
+		want    int // number of edits
+	}{
+		{
+			name:    "identical data produces no edits",
+			oldData: []uint32{0, 0, 6, 0, 0, 0, 7, 1, 5, 0},
+			newData: []uint32{0, 0, 6, 0, 0, 0, 7, 1, 5, 0},
+			want:    0,
+		},
+		{
+			name:    "changed data produces one edit",
+			oldData: []uint32{0, 0, 6, 0, 0, 0, 7, 1, 5, 0},
+			newData: []uint32{0, 0, 6, 0, 0, 0, 7, 2, 5, 0},
+			want:    1,
+		},
+		{
+			name:    "new data longer than old",
+			oldData: []uint32{0, 0, 6, 0, 0},
+			newData: []uint32{0, 0, 6, 0, 0, 0, 7, 1, 5, 0},
+			want:    1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			edits := computeSemanticTokenEdits(tt.oldData, tt.newData)
+			if len(edits) != tt.want {
+				t.Errorf("got %d edits, want %d: %+v", len(edits), tt.want, edits)
+			}
+		})
+	}
+}
+
 func TestClassifyToken_systemVariable(t *testing.T) {
 	// @@IDENTITY should be classified as variable
 	input := "SELECT @@IDENTITY"

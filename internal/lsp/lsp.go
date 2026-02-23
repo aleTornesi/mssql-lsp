@@ -62,6 +62,8 @@ type ServerCapabilities struct {
 	FoldingRangeProvider             bool                             `json:"foldingRangeProvider,omitempty"`
 	SemanticTokensProvider           *SemanticTokensOptions           `json:"semanticTokensProvider,omitempty"`
 	DeclarationProvider              bool                             `json:"declarationProvider,omitempty"`
+	LinkedEditingRangeProvider       bool                             `json:"linkedEditingRangeProvider,omitempty"`
+	InlayHintProvider                bool                             `json:"inlayHintProvider,omitempty"`
 	ExecuteCommandProvider           *ExecuteCommandOptions           `json:"executeCommandProvider,omitempty"`
 }
 
@@ -653,8 +655,12 @@ type SymbolInformation struct {
 type SemanticTokensOptions struct {
 	Legend SemanticTokensLegend `json:"legend"`
 	Range  bool                 `json:"range,omitempty"`
-	Full   bool                 `json:"full,omitempty"`
+	Full   interface{}          `json:"full,omitempty"` // bool or SemanticTokensFullOptions
 	WorkDoneProgressOptions
+}
+
+type SemanticTokensFullOptions struct {
+	Delta bool `json:"delta,omitempty"`
 }
 
 type SemanticTokensLegend struct {
@@ -713,4 +719,59 @@ type DocumentOnTypeFormattingParams struct {
 	Position     Position               `json:"position"`
 	Ch           string                 `json:"ch"`
 	Options      FormattingOptions      `json:"options"`
+}
+
+// textDocument/linkedEditingRange
+
+type LinkedEditingRangeParams struct {
+	TextDocumentPositionParams
+	WorkDoneProgressParams
+}
+
+type LinkedEditingRanges struct {
+	Ranges      []Range `json:"ranges"`
+	WordPattern string  `json:"wordPattern,omitempty"`
+}
+
+// textDocument/inlayHint
+
+type InlayHintParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Range        Range                  `json:"range"`
+	WorkDoneProgressParams
+}
+
+type InlayHintKind int
+
+const (
+	InlayHintKindType      InlayHintKind = 1
+	InlayHintKindParameter InlayHintKind = 2
+)
+
+type InlayHint struct {
+	Position     Position      `json:"position"`
+	Label        string        `json:"label"`
+	Kind         InlayHintKind `json:"kind,omitempty"`
+	PaddingLeft  bool          `json:"paddingLeft,omitempty"`
+	PaddingRight bool          `json:"paddingRight,omitempty"`
+}
+
+// textDocument/semanticTokens/full/delta
+
+type SemanticTokensDeltaParams struct {
+	TextDocument     TextDocumentIdentifier `json:"textDocument"`
+	PreviousResultID string                 `json:"previousResultId"`
+	WorkDoneProgressParams
+	PartialResultParams
+}
+
+type SemanticTokensDelta struct {
+	ResultID string              `json:"resultId,omitempty"`
+	Edits    []SemanticTokensEdit `json:"edits"`
+}
+
+type SemanticTokensEdit struct {
+	Start       uint32   `json:"start"`
+	DeleteCount uint32   `json:"deleteCount"`
+	Data        []uint32 `json:"data,omitempty"`
 }

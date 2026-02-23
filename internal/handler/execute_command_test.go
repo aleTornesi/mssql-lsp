@@ -3,58 +3,9 @@ package handler
 import (
 	"testing"
 
-	"github.com/atornesi/tsql-ls/internal/config"
-	"github.com/atornesi/tsql-ls/internal/database"
+	"github.com/google/go-cmp/cmp"
 	"github.com/atornesi/tsql-ls/internal/lsp"
 )
-
-func Test_executeQuery(t *testing.T) {
-	t.Skip("requires DB mock - will update for offline mode")
-	tx := newTestContext()
-	tx.setup(t)
-	defer tx.tearDown()
-
-	didChangeConfigurationParams := lsp.DidChangeConfigurationParams{
-		Settings: struct {
-			SQLS *config.Config "json:\"sqls\""
-		}{
-			SQLS: &config.Config{
-				Connections: []*database.DBConfig{
-					{
-						Driver:         "mock",
-						DataSourceName: "",
-					},
-				},
-			},
-		},
-	}
-	if err := tx.conn.Call(tx.ctx, "workspace/didChangeConfiguration", didChangeConfigurationParams, nil); err != nil {
-		t.Fatal("conn.Call workspace/didChangeConfiguration:", err)
-	}
-
-	uri := "file:///test.sql"
-	text := "SELECT 1; SELECT 2;"
-	didOpenParams := lsp.DidOpenTextDocumentParams{
-		TextDocument: lsp.TextDocumentItem{
-			URI:        uri,
-			LanguageID: "sql",
-			Version:    0,
-			Text:       text,
-		},
-	}
-	if err := tx.conn.Call(tx.ctx, "textDocument/didOpen", didOpenParams, nil); err != nil {
-		t.Fatal("conn.Call textDocument/didOpen:", err)
-	}
-	tx.testFile(t, didOpenParams.TextDocument.URI, didOpenParams.TextDocument.Text)
-
-	// executeCommandParams := lsp.ExecuteCommandParams{
-	// 	Command:   CommandExecuteQuery,
-	// 	Arguments: []interface{}{uri},
-	// }
-	// var got interface{}
-	// tx.conn.Call(tx.ctx, "workspace/executeCommand", executeCommandParams, &got)
-	// pass error
-}
 
 func Test_extractRangeText(t *testing.T) {
 	type args struct {
@@ -107,6 +58,87 @@ func Test_extractRangeText(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := extractRangeText(tt.args.text, tt.args.startLine, tt.args.startChar, tt.args.endLine, tt.args.endChar); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_codeActionRemoveCTE(t *testing.T) {
+	uri := "file:///test.sql"
+	tests := []struct {
+		name     string
+		input    string
+		diagName string
+		diagRange lsp.Range
+		wantEdit *lsp.Range // nil means no action returned
+	}{
+		{
+			name:     "single CTE removes WITH clause",
+			input:    "WITH cte AS (SELECT 1)\nSELECT 1",
+			diagName: "cte",
+			diagRange: lsp.Range{
+				Start: lsp.Position{Line: 0, Character: 5},
+				End:   lsp.Position{Line: 0, Character: 8},
+			},
+			wantEdit: &lsp.Range{
+				Start: lsp.Position{Line: 0, Character: 0},
+				End:   lsp.Position{Line: 0, Character: 22},
+			},
+		},
+		{
+			name:     "first of two CTEs",
+			input:    "WITH a AS (SELECT 1), b AS (SELECT 2)\nSELECT * FROM b",
+			diagName: "a",
+			diagRange: lsp.Range{
+				Start: lsp.Position{Line: 0, Character: 5},
+				End:   lsp.Position{Line: 0, Character: 6},
+			},
+			wantEdit: &lsp.Range{
+				Start: lsp.Position{Line: 0, Character: 5},
+				End:   lsp.Position{Line: 0, Character: 21},
+			},
+		},
+		{
+			name:     "last of two CTEs",
+			input:    "WITH a AS (SELECT 1), b AS (SELECT 2)\nSELECT * FROM a",
+			diagName: "b",
+			diagRange: lsp.Range{
+				Start: lsp.Position{Line: 0, Character: 22},
+				End:   lsp.Position{Line: 0, Character: 23},
+			},
+			wantEdit: &lsp.Range{
+				Start: lsp.Position{Line: 0, Character: 20},
+				End:   lsp.Position{Line: 0, Character: 37},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code := "TSQL011"
+			diag := lsp.Diagnostic{
+				Range: tt.diagRange,
+				Code:  &code,
+			}
+			action := codeActionRemoveCTE(uri, tt.input, diag)
+			if tt.wantEdit == nil {
+				if action != nil {
+					t.Errorf("expected nil action")
+				}
+				return
+			}
+			if action == nil {
+				t.Fatal("expected non-nil action")
+			}
+			if action.Edit == nil {
+				t.Fatal("expected edit in action")
+			}
+			edits := action.Edit.Changes[uri]
+			if len(edits) != 1 {
+				t.Fatalf("expected 1 edit, got %d", len(edits))
+			}
+			if diff := cmp.Diff(*tt.wantEdit, edits[0].Range); diff != "" {
+				t.Errorf("edit range mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

@@ -163,3 +163,29 @@ func TestTypeDefinition(t *testing.T) {
 		})
 	}
 }
+
+func TestTypeDefinition_variable(t *testing.T) {
+	// Test that typeDefinition on a variable reference goes to its type
+	input := "DECLARE @x INT\nSELECT @x"
+	uri := testFileURI
+
+	params := lsp.TypeDefinitionParams{
+		TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+			TextDocument: lsp.TextDocumentIdentifier{URI: uri},
+			Position:     lsp.Position{Line: 1, Character: 8}, // cursor on @x usage
+		},
+	}
+
+	got, err := typeDefinition(uri, input, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected 1 location, got %d", len(got))
+	}
+	// INT should be at line 0, after "@x "
+	loc := got[0]
+	if loc.Range.Start.Line != 0 {
+		t.Errorf("expected line 0, got %d", loc.Range.Start.Line)
+	}
+}

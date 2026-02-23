@@ -63,6 +63,8 @@ func init() {
 	}
 }
 
+var semanticTokenCounter uint64
+
 func (s *Server) handleTextDocumentSemanticTokensFull(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
@@ -79,7 +81,80 @@ func (s *Server) handleTextDocumentSemanticTokensFull(ctx context.Context, conn 
 	}
 
 	data := encodeSemanticTokens(f.Text, nil)
-	return lsp.SemanticTokens{Data: data}, nil
+	semanticTokenCounter++
+	resultID := fmt.Sprintf("%d", semanticTokenCounter)
+	s.semanticTokenCache[params.TextDocument.URI] = &cachedSemanticTokens{
+		resultID: resultID,
+		data:     data,
+	}
+	return lsp.SemanticTokens{ResultID: resultID, Data: data}, nil
+}
+
+func (s *Server) handleTextDocumentSemanticTokensDelta(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	if req.Params == nil {
+		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
+	}
+
+	var params lsp.SemanticTokensDeltaParams
+	if err := json.Unmarshal(*req.Params, &params); err != nil {
+		return nil, err
+	}
+
+	f, ok := s.files[params.TextDocument.URI]
+	if !ok {
+		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
+	}
+
+	newData := encodeSemanticTokens(f.Text, nil)
+	semanticTokenCounter++
+	resultID := fmt.Sprintf("%d", semanticTokenCounter)
+
+	cached := s.semanticTokenCache[params.TextDocument.URI]
+	s.semanticTokenCache[params.TextDocument.URI] = &cachedSemanticTokens{
+		resultID: resultID,
+		data:     newData,
+	}
+
+	// If no previous result or ID mismatch, return full tokens
+	if cached == nil || cached.resultID != params.PreviousResultID {
+		return lsp.SemanticTokens{ResultID: resultID, Data: newData}, nil
+	}
+
+	edits := computeSemanticTokenEdits(cached.data, newData)
+	return lsp.SemanticTokensDelta{ResultID: resultID, Edits: edits}, nil
+}
+
+func computeSemanticTokenEdits(oldData, newData []uint32) []lsp.SemanticTokensEdit {
+	// Find first difference
+	minLen := len(oldData)
+	if len(newData) < minLen {
+		minLen = len(newData)
+	}
+	start := 0
+	for start < minLen && oldData[start] == newData[start] {
+		start++
+	}
+
+	// Find last difference from end
+	oldEnd := len(oldData)
+	newEnd := len(newData)
+	for oldEnd > start && newEnd > start && oldData[oldEnd-1] == newData[newEnd-1] {
+		oldEnd--
+		newEnd--
+	}
+
+	if start == oldEnd && start == newEnd {
+		return []lsp.SemanticTokensEdit{}
+	}
+
+	edit := lsp.SemanticTokensEdit{
+		Start:       uint32(start),
+		DeleteCount: uint32(oldEnd - start),
+	}
+	if newEnd > start {
+		edit.Data = newData[start:newEnd]
+	}
+	return []lsp.SemanticTokensEdit{edit}
 }
 
 func (s *Server) handleTextDocumentSemanticTokensRange(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {

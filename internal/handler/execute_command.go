@@ -12,6 +12,8 @@ import (
 	"github.com/atornesi/tsql-ls/ast"
 	"github.com/atornesi/tsql-ls/internal/lsp"
 	"github.com/atornesi/tsql-ls/parser"
+	"github.com/atornesi/tsql-ls/parser/parseutil"
+	"github.com/atornesi/tsql-ls/token"
 )
 
 func (s *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
@@ -67,20 +69,158 @@ func (s *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 }
 
 func codeActionRemoveCTE(uri, text string, diag lsp.Diagnostic) *lsp.CodeAction {
-	// Find the CTE name from the diagnostic range and remove it from the WITH clause.
-	// Simple approach: replace the diagnostic range text with empty string.
-	// A full implementation would parse and remove the entire CTE definition,
-	// but for now we provide a basic action.
 	cteName := extractRangeText(text,
 		diag.Range.Start.Line, diag.Range.Start.Character,
 		diag.Range.End.Line, diag.Range.End.Character)
 	if cteName == "" {
 		return nil
 	}
+
+	batchText, adjustedLine := parser.BatchAtLine(text, diag.Range.Start.Line)
+	batchStartLine := diag.Range.Start.Line - adjustedLine
+	parsed, err := parser.Parse(batchText)
+	if err != nil {
+		return nil
+	}
+
+	toks := parseutil.FlattenTokens(parsed)
+
+	// Find WITH keyword and collect CTE spans
+	type cteSpan struct {
+		name     string
+		nameIdx  int // index of name token
+		endIdx   int // index of closing RParen token
+		commaIdx int // index of comma after this CTE (-1 if none)
+	}
+
+	var withIdx int = -1
+	var ctes []cteSpan
+
+	for i := 0; i < len(toks); i++ {
+		if !parseutil.MatchKeyword(toks[i], "WITH") {
+			continue
+		}
+		// Check next non-WS token is not '(' (table hint)
+		j := parseutil.SkipWS(toks, i+1)
+		if j >= len(toks) || toks[j].Kind == token.LParen {
+			continue
+		}
+		withIdx = i
+		i = j
+		for i < len(toks) {
+			i = parseutil.SkipWS(toks, i)
+			if i >= len(toks) {
+				break
+			}
+			cs := cteSpan{nameIdx: i, commaIdx: -1}
+			w, ok := toks[i].Value.(*token.SQLWord)
+			if ok {
+				cs.name = w.Value
+			} else {
+				cs.name = toks[i].String()
+			}
+			i++
+			i = parseutil.SkipWS(toks, i)
+			if i >= len(toks) || !parseutil.MatchKeyword(toks[i], "AS") {
+				break
+			}
+			i++
+			i = parseutil.SkipWS(toks, i)
+			if i >= len(toks) || toks[i].Kind != token.LParen {
+				break
+			}
+			depth := 1
+			i++
+			for i < len(toks) && depth > 0 {
+				if toks[i].Kind == token.LParen {
+					depth++
+				} else if toks[i].Kind == token.RParen {
+					depth--
+				}
+				if depth == 0 {
+					cs.endIdx = i
+				}
+				i++
+			}
+			ctes = append(ctes, cs)
+
+			j := parseutil.SkipWS(toks, i)
+			if j < len(toks) && toks[j].Kind == token.Comma {
+				ctes[len(ctes)-1].commaIdx = j
+				i = j + 1
+				continue
+			}
+			break
+		}
+		break
+	}
+
+	if withIdx < 0 || len(ctes) == 0 {
+		return nil
+	}
+
+	// Find the target CTE
+	targetIdx := -1
+	for i, cs := range ctes {
+		if strings.EqualFold(cs.name, cteName) {
+			targetIdx = i
+			break
+		}
+	}
+	if targetIdx < 0 {
+		return nil
+	}
+
+	var editRange lsp.Range
+	if len(ctes) == 1 {
+		// Single CTE: remove from WITH through closing RParen
+		editRange = lsp.Range{
+			Start: tokPos(toks[withIdx], batchStartLine),
+			End:   tokEndPos(toks[ctes[0].endIdx], batchStartLine),
+		}
+	} else if targetIdx == 0 {
+		// First of multiple: remove from name through comma after
+		editRange = lsp.Range{
+			Start: tokPos(toks[ctes[0].nameIdx], batchStartLine),
+			End:   tokEndPos(toks[ctes[0].commaIdx], batchStartLine),
+		}
+	} else {
+		// Middle or last: remove from comma before through closing RParen
+		prevComma := ctes[targetIdx-1].commaIdx
+		editRange = lsp.Range{
+			Start: tokPos(toks[prevComma], batchStartLine),
+			End:   tokEndPos(toks[ctes[targetIdx].endIdx], batchStartLine),
+		}
+	}
+
 	return &lsp.CodeAction{
 		Title:       fmt.Sprintf("Remove unreferenced CTE '%s'", cteName),
 		Kind:        lsp.CodeActionKindQuickFix,
 		Diagnostics: []lsp.Diagnostic{diag},
+		Edit: &lsp.WorkspaceEdit{
+			Changes: map[string][]lsp.TextEdit{
+				uri: {
+					{
+						Range:   editRange,
+						NewText: "",
+					},
+				},
+			},
+		},
+	}
+}
+
+func tokPos(tok *ast.SQLToken, batchStartLine int) lsp.Position {
+	return lsp.Position{
+		Line:      tok.From.Line + batchStartLine,
+		Character: tok.From.Col,
+	}
+}
+
+func tokEndPos(tok *ast.SQLToken, batchStartLine int) lsp.Position {
+	return lsp.Position{
+		Line:      tok.To.Line + batchStartLine,
+		Character: tok.To.Col,
 	}
 }
 
@@ -203,18 +343,6 @@ func codeActionSurroundTryCatch(uri string, r lsp.Range) lsp.CodeAction {
 	}
 }
 
-func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	if req.Params == nil {
-		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
-	}
-
-	var params lsp.ExecuteCommandParams
-	if err := json.Unmarshal(*req.Params, &params); err != nil {
-		return nil, err
-	}
-
-	return nil, fmt.Errorf("unsupported command: %v", params.Command)
-}
 
 func extractRangeText(text string, startLine, startChar, endLine, endChar int) string {
 	writer := bytes.NewBufferString("")

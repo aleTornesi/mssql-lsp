@@ -85,7 +85,11 @@ func ExtractSymbols(parsed ast.TokenList) *SymbolTable {
 	return st
 }
 
-// flattenTokens collects all leaf SQLTokens in order.
+// FlattenTokens collects all leaf SQLTokens in order.
+func FlattenTokens(tl ast.TokenList) []*ast.SQLToken {
+	return flattenTokens(tl)
+}
+
 func flattenTokens(tl ast.TokenList) []*ast.SQLToken {
 	var result []*ast.SQLToken
 	flattenRecursive(tl, &result)
@@ -113,11 +117,21 @@ func isWhitespaceOrComment(tok *ast.SQLToken) bool {
 	return tok.Kind == token.Whitespace || tok.Kind == token.Comment || tok.Kind == token.MultilineComment
 }
 
+// SkipWS advances past whitespace and comment tokens.
+func SkipWS(toks []*ast.SQLToken, i int) int {
+	return skipWS(toks, i)
+}
+
 func skipWS(toks []*ast.SQLToken, i int) int {
 	for i < len(toks) && isWhitespaceOrComment(toks[i]) {
 		i++
 	}
 	return i
+}
+
+// MatchKeyword checks if a token is a SQL keyword matching kw (case-insensitive).
+func MatchKeyword(tok *ast.SQLToken, kw string) bool {
+	return matchKeyword(tok, kw)
 }
 
 func matchKeyword(tok *ast.SQLToken, kw string) bool {

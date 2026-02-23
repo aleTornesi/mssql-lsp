@@ -19,8 +19,14 @@ type Server struct {
 	DefaultFileCfg  *config.Config
 	WSCfg           *config.Config
 
-	worker *database.Worker
-	files  map[string]*File
+	worker             *database.Worker
+	files              map[string]*File
+	semanticTokenCache map[string]*cachedSemanticTokens
+}
+
+type cachedSemanticTokens struct {
+	resultID string
+	data     []uint32
 }
 
 type File struct {
@@ -33,8 +39,9 @@ func NewServer() *Server {
 	worker.Start()
 
 	return &Server{
-		files:  make(map[string]*File),
-		worker: worker,
+		files:              make(map[string]*File),
+		worker:             worker,
+		semanticTokenCache: make(map[string]*cachedSemanticTokens),
 	}
 }
 
@@ -88,12 +95,12 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleTextDocumentDidClose(ctx, conn, req)
 	case "textDocument/completion":
 		return s.handleTextDocumentCompletion(ctx, conn, req)
+	case "completionItem/resolve":
+		return s.handleCompletionItemResolve(ctx, conn, req)
 	case "textDocument/hover":
 		return s.handleTextDocumentHover(ctx, conn, req)
 	case "textDocument/codeAction":
 		return s.handleTextDocumentCodeAction(ctx, conn, req)
-	case "workspace/executeCommand":
-		return s.handleWorkspaceExecuteCommand(ctx, conn, req)
 	case "workspace/didChangeConfiguration":
 		return s.handleWorkspaceDidChangeConfiguration(ctx, conn, req)
 	case "textDocument/formatting":
@@ -107,6 +114,8 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 	case "textDocument/definition":
 		return s.handleDefinition(ctx, conn, req)
 	case "textDocument/typeDefinition":
+		return s.handleTypeDefinition(ctx, conn, req)
+	case "textDocument/declaration":
 		return s.handleDefinition(ctx, conn, req)
 	case "textDocument/foldingRange":
 		return s.handleTextDocumentFoldingRange(ctx, conn, req)
@@ -122,6 +131,12 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleTextDocumentSemanticTokensFull(ctx, conn, req)
 	case "textDocument/semanticTokens/range":
 		return s.handleTextDocumentSemanticTokensRange(ctx, conn, req)
+	case "textDocument/semanticTokens/full/delta":
+		return s.handleTextDocumentSemanticTokensDelta(ctx, conn, req)
+	case "textDocument/linkedEditingRange":
+		return s.handleLinkedEditingRange(ctx, conn, req)
+	case "textDocument/inlayHint":
+		return s.handleInlayHint(ctx, conn, req)
 	case "textDocument/prepareRename":
 		return s.handleTextDocumentPrepareRename(ctx, conn, req)
 	case "textDocument/selectionRange":
@@ -152,6 +167,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 				CodeActionKinds: []lsp.CodeActionKind{lsp.CodeActionKindQuickFix, lsp.CodeActionKindRefactor},
 			},
 			CompletionProvider: &lsp.CompletionOptions{
+				ResolveProvider:   true,
 				TriggerCharacters: []string{"(", "."},
 			},
 			SignatureHelpProvider: &lsp.SignatureHelpOptions{
@@ -162,6 +178,8 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 				},
 			},
 			DefinitionProvider:              true,
+			TypeDefinitionProvider:          true,
+			DeclarationProvider:             true,
 			ReferencesProvider:              true,
 			DocumentHighlightProvider:       true,
 			DocumentFormattingProvider:      true,
@@ -169,17 +187,19 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 			DocumentOnTypeFormattingProvider: &lsp.DocumentOnTypeFormattingOptions{
 				FirstTriggerCharacter: "\n",
 			},
-			RenameProvider: lsp.RenameOptions{PrepareProvider: true},
-			SelectionRangeProvider:          true,
-			DocumentSymbolProvider:          true,
-			WorkspaceSymbolProvider:         true,
-			FoldingRangeProvider:            true,
+			RenameProvider:                 lsp.RenameOptions{PrepareProvider: true},
+			SelectionRangeProvider:         true,
+			DocumentSymbolProvider:         true,
+			WorkspaceSymbolProvider:        true,
+			FoldingRangeProvider:           true,
+			LinkedEditingRangeProvider:     true,
+			InlayHintProvider:              true,
 			SemanticTokensProvider: &lsp.SemanticTokensOptions{
 				Legend: lsp.SemanticTokensLegend{
 					TokenTypes:     semanticTokenTypes,
 					TokenModifiers: semanticTokenModifiers,
 				},
-				Full:  true,
+				Full:  lsp.SemanticTokensFullOptions{Delta: true},
 				Range: true,
 			},
 		},

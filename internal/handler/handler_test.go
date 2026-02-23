@@ -111,6 +111,7 @@ func TestInitialized(t *testing.T) {
 			TextDocumentSync: lsp.TDSKFull,
 			HoverProvider:    true,
 			CompletionProvider: &lsp.CompletionOptions{
+				ResolveProvider:   true,
 				TriggerCharacters: []string{"(", "."},
 			},
 			SignatureHelpProvider: &lsp.SignatureHelpOptions{
@@ -124,6 +125,8 @@ func TestInitialized(t *testing.T) {
 				"CodeActionKinds": []interface{}{"quickfix", "refactor"},
 			},
 			DefinitionProvider:              true,
+			TypeDefinitionProvider:          true,
+			DeclarationProvider:             true,
 			ReferencesProvider:              true,
 			DocumentHighlightProvider:       true,
 			DocumentFormattingProvider:      true,
@@ -134,16 +137,18 @@ func TestInitialized(t *testing.T) {
 			RenameProvider: map[string]interface{}{
 				"prepareProvider": true,
 			},
-			SelectionRangeProvider:          true,
-			DocumentSymbolProvider:          true,
-			WorkspaceSymbolProvider:         true,
-			FoldingRangeProvider:            true,
+			SelectionRangeProvider:         true,
+			DocumentSymbolProvider:         true,
+			WorkspaceSymbolProvider:        true,
+			FoldingRangeProvider:           true,
+			LinkedEditingRangeProvider:     true,
+			InlayHintProvider:              true,
 			SemanticTokensProvider: &lsp.SemanticTokensOptions{
 				Legend: lsp.SemanticTokensLegend{
 					TokenTypes:     semanticTokenTypes,
 					TokenModifiers: semanticTokenModifiers,
 				},
-				Full:  true,
+				Full:  map[string]interface{}{"delta": true},
 				Range: true,
 			},
 		},
