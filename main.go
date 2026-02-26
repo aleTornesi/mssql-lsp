@@ -11,8 +11,8 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/urfave/cli/v2"
 
-	"github.com/atornesi/tsql-ls/internal/config"
-	"github.com/atornesi/tsql-ls/internal/handler"
+	"github.com/atornesi/tsql-ls/pkg/config"
+	"github.com/atornesi/tsql-ls/pkg/handler"
 )
 
 const name = "tsql-ls"
