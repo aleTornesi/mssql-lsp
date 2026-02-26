@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"unicode/utf8"
 
 	"github.com/sourcegraph/jsonrpc2"
 
@@ -159,9 +160,11 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 		return nil, err
 	}
 
+	go s.connectDB(ctx)
+
 	result = lsp.InitializeResult{
 		Capabilities: lsp.ServerCapabilities{
-			TextDocumentSync:   lsp.TDSKFull,
+			TextDocumentSync:   lsp.TDSKIncremental,
 			HoverProvider:      true,
 			CodeActionProvider: lsp.CodeActionOptions{
 				CodeActionKinds: []lsp.CodeActionKind{lsp.CodeActionKindQuickFix, lsp.CodeActionKindRefactor},
@@ -247,11 +250,55 @@ func (s *Server) handleTextDocumentDidChange(ctx context.Context, conn *jsonrpc2
 		return nil, err
 	}
 
-	if err := s.updateFile(params.TextDocument.URI, params.ContentChanges[0].Text); err != nil {
-		return nil, err
+	f, ok := s.files[params.TextDocument.URI]
+	if !ok {
+		return nil, fmt.Errorf("document not found: %v", params.TextDocument.URI)
 	}
-	s.publishDiagnostics(ctx, conn, params.TextDocument.URI, params.ContentChanges[0].Text)
+
+	for _, change := range params.ContentChanges {
+		f.Text = applyContentChange(f.Text, change)
+	}
+
+	s.publishDiagnostics(ctx, conn, params.TextDocument.URI, f.Text)
 	return nil, nil
+}
+
+func applyContentChange(text string, change lsp.TextDocumentContentChangeEvent) string {
+	if change.Range == nil {
+		return change.Text
+	}
+
+	startOffset := utf16PositionToByteOffset(text, change.Range.Start)
+	endOffset := utf16PositionToByteOffset(text, change.Range.End)
+
+	return text[:startOffset] + change.Text + text[endOffset:]
+}
+
+func utf16PositionToByteOffset(text string, pos lsp.Position) int {
+	line := 0
+	offset := 0
+
+	// Advance to the target line.
+	for offset < len(text) && line < pos.Line {
+		if text[offset] == '\n' {
+			line++
+		}
+		offset++
+	}
+
+	// Advance by UTF-16 code units within the line.
+	utf16Col := 0
+	for offset < len(text) && utf16Col < pos.Character {
+		r, size := utf8.DecodeRuneInString(text[offset:])
+		if r >= 0x10000 {
+			utf16Col += 2 // surrogate pair
+		} else {
+			utf16Col++
+		}
+		offset += size
+	}
+
+	return offset
 }
 
 func (s *Server) handleTextDocumentDidSave(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
@@ -271,6 +318,11 @@ func (s *Server) handleTextDocumentDidSave(ctx context.Context, conn *jsonrpc2.C
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	f, ok := s.files[params.TextDocument.URI]
+	if ok {
+		s.publishDiagnostics(ctx, conn, params.TextDocument.URI, f.Text)
 	}
 	return nil, nil
 }
@@ -325,7 +377,27 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 		return nil, err
 	}
 	s.WSCfg = params.Settings.SQLS
+	go s.connectDB(ctx)
 	return nil, nil
+}
+
+func (s *Server) connectDB(ctx context.Context) {
+	cfg := s.getConfig()
+	if cfg == nil || len(cfg.Connections) == 0 {
+		return
+	}
+
+	repo, err := database.Open(ctx, cfg.Connections[0])
+	if err != nil {
+		log.Printf("connectDB: %v", err)
+		return
+	}
+
+	if err := s.worker.ReCache(ctx, repo); err != nil {
+		log.Printf("connectDB cache: %v", err)
+		return
+	}
+	log.Println("connectDB: connected successfully")
 }
 
 func (s *Server) getConfig() *config.Config {

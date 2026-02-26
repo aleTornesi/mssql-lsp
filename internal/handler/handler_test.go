@@ -108,7 +108,7 @@ func TestInitialized(t *testing.T) {
 
 	want := lsp.InitializeResult{
 		Capabilities: lsp.ServerCapabilities{
-			TextDocumentSync: lsp.TDSKFull,
+			TextDocumentSync: lsp.TDSKIncremental,
 			HoverProvider:    true,
 			CompletionProvider: &lsp.CompletionOptions{
 				ResolveProvider:   true,
@@ -193,26 +193,15 @@ func TestFileWatch(t *testing.T) {
 			Version: 1,
 		},
 		ContentChanges: []lsp.TextDocumentContentChangeEvent{
-			lsp.TextDocumentContentChangeEvent{
-				Range: lsp.Range{
-					Start: lsp.Position{
-						Line:      1,
-						Character: 1,
-					},
-					End: lsp.Position{
-						Line:      1,
-						Character: 1,
-					},
-				},
-				RangeLength: 1,
-				Text:        changeText,
+			{
+				Text: changeText,
 			},
 		},
 	}
 	if err := tx.conn.Call(tx.ctx, "textDocument/didChange", didChangeParams, nil); err != nil {
 		t.Fatal("conn.Call textDocument/didChange:", err)
 	}
-	tx.testFile(t, didChangeParams.TextDocument.URI, didChangeParams.ContentChanges[0].Text)
+	tx.testFile(t, didChangeParams.TextDocument.URI, changeText)
 
 	didSaveParams := lsp.DidSaveTextDocumentParams{
 		Text:         openText,
@@ -232,6 +221,142 @@ func TestFileWatch(t *testing.T) {
 	_, ok := tx.server.files[didCloseParams.TextDocument.URI]
 	if ok {
 		t.Errorf("found opened file. URI:%s", didCloseParams.TextDocument.URI)
+	}
+}
+
+func TestApplyContentChange(t *testing.T) {
+	tests := []struct {
+		name   string
+		text   string
+		change lsp.TextDocumentContentChangeEvent
+		want   string
+	}{
+		{
+			name:   "full replacement nil range",
+			text:   "SELECT 1",
+			change: lsp.TextDocumentContentChangeEvent{Text: "SELECT 2"},
+			want:   "SELECT 2",
+		},
+		{
+			name: "insert at beginning",
+			text: "SELECT 1",
+			change: lsp.TextDocumentContentChangeEvent{
+				Range: &lsp.Range{
+					Start: lsp.Position{Line: 0, Character: 0},
+					End:   lsp.Position{Line: 0, Character: 0},
+				},
+				Text: "-- comment\n",
+			},
+			want: "-- comment\nSELECT 1",
+		},
+		{
+			name: "replace word",
+			text: "SELECT id FROM users",
+			change: lsp.TextDocumentContentChangeEvent{
+				Range: &lsp.Range{
+					Start: lsp.Position{Line: 0, Character: 7},
+					End:   lsp.Position{Line: 0, Character: 9},
+				},
+				Text: "name",
+			},
+			want: "SELECT name FROM users",
+		},
+		{
+			name: "delete text",
+			text: "SELECT id, name FROM users",
+			change: lsp.TextDocumentContentChangeEvent{
+				Range: &lsp.Range{
+					Start: lsp.Position{Line: 0, Character: 9},
+					End:   lsp.Position{Line: 0, Character: 15},
+				},
+				Text: "",
+			},
+			want: "SELECT id FROM users",
+		},
+		{
+			name: "multiline insert",
+			text: "SELECT 1\nFROM t",
+			change: lsp.TextDocumentContentChangeEvent{
+				Range: &lsp.Range{
+					Start: lsp.Position{Line: 1, Character: 5},
+					End:   lsp.Position{Line: 1, Character: 6},
+				},
+				Text: "users",
+			},
+			want: "SELECT 1\nFROM users",
+		},
+		{
+			name: "append at EOF",
+			text: "SELECT 1",
+			change: lsp.TextDocumentContentChangeEvent{
+				Range: &lsp.Range{
+					Start: lsp.Position{Line: 0, Character: 8},
+					End:   lsp.Position{Line: 0, Character: 8},
+				},
+				Text: "\nGO",
+			},
+			want: "SELECT 1\nGO",
+		},
+		{
+			name: "utf16 surrogate pair emoji",
+			text: "-- 😀 test\nSELECT 1",
+			change: lsp.TextDocumentContentChangeEvent{
+				Range: &lsp.Range{
+					Start: lsp.Position{Line: 1, Character: 7},
+					End:   lsp.Position{Line: 1, Character: 8},
+				},
+				Text: "2",
+			},
+			want: "-- 😀 test\nSELECT 2",
+		},
+		{
+			name: "edit after emoji on same line",
+			text: "-- 😀 SELECT 1",
+			change: lsp.TextDocumentContentChangeEvent{
+				Range: &lsp.Range{
+					Start: lsp.Position{Line: 0, Character: 5}, // after "-- 😀" (😀 is 2 UTF-16 units)
+					End:   lsp.Position{Line: 0, Character: 5},
+				},
+				Text: "!",
+			},
+			want: "-- 😀! SELECT 1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := applyContentChange(tt.text, tt.change)
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMultipleSequentialEdits(t *testing.T) {
+	text := "SELECT 1"
+	changes := []lsp.TextDocumentContentChangeEvent{
+		{
+			Range: &lsp.Range{
+				Start: lsp.Position{Line: 0, Character: 7},
+				End:   lsp.Position{Line: 0, Character: 8},
+			},
+			Text: "2",
+		},
+		{
+			Range: &lsp.Range{
+				Start: lsp.Position{Line: 0, Character: 0},
+				End:   lsp.Position{Line: 0, Character: 6},
+			},
+			Text: "INSERT",
+		},
+	}
+	for _, c := range changes {
+		text = applyContentChange(text, c)
+	}
+	want := "INSERT 2"
+	if text != want {
+		t.Errorf("got %q, want %q", text, want)
 	}
 }
 

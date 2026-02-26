@@ -238,7 +238,7 @@ type TextDocumentIdentifier struct {
 }
 
 type TextDocumentContentChangeEvent struct {
-	Range       Range  `json:"range"`
+	Range       *Range `json:"range,omitempty"`
 	RangeLength int    `json:"rangeLength"`
 	Text        string `json:"text"`
 }
