@@ -7,10 +7,10 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/pkg/lsp"
-	"github.com/atornesi/tsql-ls/parser"
-	"github.com/atornesi/tsql-ls/parser/parseutil"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/parser"
+	"github.com/aleTornesi/mssql-lsp/parser/parseutil"
 )
 
 func (s *Server) handleTextDocumentDocumentSymbol(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {

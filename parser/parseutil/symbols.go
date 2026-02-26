@@ -3,8 +3,8 @@ package parseutil
 import (
 	"strings"
 
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 // SymbolKind classifies a batch-scoped symbol.

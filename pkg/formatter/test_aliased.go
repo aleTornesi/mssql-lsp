@@ -2,8 +2,8 @@ package formatter
 
 import (
 	"fmt"
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/parser"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/parser"
 )
 
 func TestAliased() {

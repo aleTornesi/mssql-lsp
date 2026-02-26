@@ -1,8 +1,8 @@
 package completer
 
 import (
-	"github.com/atornesi/tsql-ls/pkg/lsp"
-	"github.com/atornesi/tsql-ls/parser/parseutil"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/parser/parseutil"
 )
 
 const (

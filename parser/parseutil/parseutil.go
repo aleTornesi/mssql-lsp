@@ -3,9 +3,9 @@ package parseutil
 import (
 	"fmt"
 
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/ast/astutil"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/ast/astutil"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 type TableInfo struct {

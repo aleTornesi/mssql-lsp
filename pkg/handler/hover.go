@@ -7,13 +7,13 @@ import (
 	"fmt"
 
 	"github.com/sourcegraph/jsonrpc2"
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/ast/astutil"
-	"github.com/atornesi/tsql-ls/pkg/database"
-	"github.com/atornesi/tsql-ls/pkg/lsp"
-	"github.com/atornesi/tsql-ls/parser"
-	"github.com/atornesi/tsql-ls/parser/parseutil"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/ast/astutil"
+	"github.com/aleTornesi/mssql-lsp/pkg/database"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/parser"
+	"github.com/aleTornesi/mssql-lsp/parser/parseutil"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 var ErrNoHover = errors.New("no hover information found")

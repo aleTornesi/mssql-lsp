@@ -9,7 +9,7 @@ import (
 
 	_ "github.com/microsoft/go-mssqldb"
 
-	"github.com/atornesi/tsql-ls/dialect"
+	"github.com/aleTornesi/mssql-lsp/dialect"
 )
 
 type MSSQLDBRepository struct {

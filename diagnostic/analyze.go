@@ -3,9 +3,9 @@ package diagnostic
 import (
 	"bytes"
 
-	"github.com/atornesi/tsql-ls/dialect"
-	"github.com/atornesi/tsql-ls/parser"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/dialect"
+	"github.com/aleTornesi/mssql-lsp/parser"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 // Analyze runs all diagnostic checks on a full T-SQL document.

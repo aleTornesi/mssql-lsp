@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 func TestParseStatement(t *testing.T) {

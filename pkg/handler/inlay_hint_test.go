@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/atornesi/tsql-ls/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
 )
 
 func TestInlayHints(t *testing.T) {

@@ -1,6 +1,6 @@
 package diagnostic
 
-import "github.com/atornesi/tsql-ls/token"
+import "github.com/aleTornesi/mssql-lsp/token"
 
 // Severity matches LSP DiagnosticSeverity.
 type Severity int

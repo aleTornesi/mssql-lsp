@@ -3,7 +3,7 @@ package diagnostic
 import (
 	"testing"
 
-	"github.com/atornesi/tsql-ls/parser"
+	"github.com/aleTornesi/mssql-lsp/parser"
 )
 
 func TestCheckSemantics_DuplicateVariable(t *testing.T) {

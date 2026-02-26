@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/atornesi/tsql-ls/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
 )
 
 func TestComplete_ExecSystemProc(t *testing.T) {

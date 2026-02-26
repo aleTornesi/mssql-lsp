@@ -3,8 +3,8 @@ package formatter
 import (
 	"testing"
 
-	"github.com/atornesi/tsql-ls/pkg/config"
-	"github.com/atornesi/tsql-ls/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/pkg/config"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
 )
 
 func TestFormatRange(t *testing.T) {

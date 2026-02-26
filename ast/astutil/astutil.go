@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/dialect"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/dialect"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 type NodeMatcher struct {

@@ -9,10 +9,10 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
-	"github.com/atornesi/tsql-ls/dialect"
-	"github.com/atornesi/tsql-ls/pkg/lsp"
-	"github.com/atornesi/tsql-ls/parser"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/dialect"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/parser"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 // Semantic token types - indices into the legend

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/atornesi/tsql-ls/dialect"
+	"github.com/aleTornesi/mssql-lsp/dialect"
 )
 
 func Open(ctx context.Context, cfg *DBConfig) (DBRepository, error) {

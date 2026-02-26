@@ -6,10 +6,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/ast/astutil"
-	"github.com/atornesi/tsql-ls/dialect"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/ast/astutil"
+	"github.com/aleTornesi/mssql-lsp/dialect"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 type (

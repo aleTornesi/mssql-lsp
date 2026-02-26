@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/ast/astutil"
-	"github.com/atornesi/tsql-ls/parser"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/ast/astutil"
+	"github.com/aleTornesi/mssql-lsp/parser"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 func Test_extractFocusedStatement(t *testing.T) {

@@ -3,9 +3,9 @@ package handler
 import (
 	"testing"
 
-	"github.com/atornesi/tsql-ls/pkg/lsp"
-	"github.com/atornesi/tsql-ls/parser"
-	"github.com/atornesi/tsql-ls/parser/parseutil"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/parser"
+	"github.com/aleTornesi/mssql-lsp/parser/parseutil"
 )
 
 func TestCollectBlockSymbols(t *testing.T) {

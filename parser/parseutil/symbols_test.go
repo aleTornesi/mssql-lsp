@@ -3,7 +3,7 @@ package parseutil
 import (
 	"testing"
 
-	"github.com/atornesi/tsql-ls/parser"
+	"github.com/aleTornesi/mssql-lsp/parser"
 )
 
 func TestExtractSymbols_Variables(t *testing.T) {

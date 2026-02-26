@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/atornesi/tsql-ls/dialect"
-	"github.com/atornesi/tsql-ls/pkg/database"
-	"github.com/atornesi/tsql-ls/pkg/lsp"
-	"github.com/atornesi/tsql-ls/parser/parseutil"
+	"github.com/aleTornesi/mssql-lsp/dialect"
+	"github.com/aleTornesi/mssql-lsp/pkg/database"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/parser/parseutil"
 )
 
 func (c *Completer) keywordCandidates(lower bool, keywords []string) []lsp.CompletionItem {

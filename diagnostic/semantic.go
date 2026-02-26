@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/parser/parseutil"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/parser/parseutil"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 // CheckSemantics runs semantic checks on a parsed batch.

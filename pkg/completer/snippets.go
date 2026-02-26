@@ -1,6 +1,6 @@
 package completer
 
-import "github.com/atornesi/tsql-ls/pkg/lsp"
+import "github.com/aleTornesi/mssql-lsp/pkg/lsp"
 
 type snippetDef struct {
 	Label      string

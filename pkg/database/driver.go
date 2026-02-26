@@ -1,7 +1,7 @@
 package database
 
 import (
-	"github.com/atornesi/tsql-ls/dialect"
+	"github.com/aleTornesi/mssql-lsp/dialect"
 )
 
 type DBConnection struct {

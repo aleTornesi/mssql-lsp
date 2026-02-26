@@ -10,8 +10,8 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
-	"github.com/atornesi/tsql-ls/pkg/config"
-	"github.com/atornesi/tsql-ls/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/pkg/config"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
 )
 
 const testFileURI = "file:///Users/octref/Code/css-test/test.sql"

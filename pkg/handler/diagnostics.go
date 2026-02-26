@@ -5,8 +5,8 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
-	"github.com/atornesi/tsql-ls/diagnostic"
-	"github.com/atornesi/tsql-ls/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/diagnostic"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
 )
 
 type PublishDiagnosticsParams struct {

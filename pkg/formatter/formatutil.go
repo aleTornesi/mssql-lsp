@@ -1,8 +1,8 @@
 package formatter
 
 import (
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 func unshift(slice []ast.Node, node ...ast.Node) []ast.Node {

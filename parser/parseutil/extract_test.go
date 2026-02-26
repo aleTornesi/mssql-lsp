@@ -3,7 +3,7 @@ package parseutil
 import (
 	"testing"
 
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 func TestExtractSelectExpr(t *testing.T) {

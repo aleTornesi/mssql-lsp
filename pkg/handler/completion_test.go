@@ -3,9 +3,9 @@ package handler
 import (
 	"testing"
 
-	"github.com/atornesi/tsql-ls/pkg/config"
-	"github.com/atornesi/tsql-ls/pkg/database"
-	"github.com/atornesi/tsql-ls/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/pkg/config"
+	"github.com/aleTornesi/mssql-lsp/pkg/database"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
 )
 
 type completionTestCase struct {

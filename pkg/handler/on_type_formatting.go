@@ -8,7 +8,7 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
-	"github.com/atornesi/tsql-ls/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
 )
 
 func (s *Server) handleTextDocumentOnTypeFormatting(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {

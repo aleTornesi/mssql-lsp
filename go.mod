@@ -1,4 +1,4 @@
-module github.com/atornesi/tsql-ls
+module github.com/aleTornesi/mssql-lsp
 
 go 1.24.0
 

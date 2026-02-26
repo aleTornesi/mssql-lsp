@@ -3,8 +3,8 @@ package parseutil
 import (
 	"testing"
 
-	"github.com/atornesi/tsql-ls/parser"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/parser"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 func TestCheckSyntaxPosition(t *testing.T) {

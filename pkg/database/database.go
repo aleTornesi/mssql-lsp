@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/atornesi/tsql-ls/dialect"
-	"github.com/atornesi/tsql-ls/parser/parseutil"
+	"github.com/aleTornesi/mssql-lsp/dialect"
+	"github.com/aleTornesi/mssql-lsp/parser/parseutil"
 )
 
 var (

@@ -1,8 +1,8 @@
 package lsp
 
 import (
-	"github.com/atornesi/tsql-ls/pkg/config"
-	"github.com/atornesi/tsql-ls/pkg/database"
+	"github.com/aleTornesi/mssql-lsp/pkg/config"
+	"github.com/aleTornesi/mssql-lsp/pkg/database"
 )
 
 // https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#initialize

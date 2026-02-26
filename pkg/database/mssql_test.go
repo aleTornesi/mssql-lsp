@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/atornesi/tsql-ls/dialect"
+	"github.com/aleTornesi/mssql-lsp/dialect"
 )
 
 func TestMssqlDSN_Passthrough(t *testing.T) {

@@ -3,8 +3,8 @@ package diagnostic
 import (
 	"strings"
 
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 // CheckStructure walks the AST and reports structural errors.

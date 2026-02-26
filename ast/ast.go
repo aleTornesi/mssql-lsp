@@ -3,8 +3,8 @@ package ast
 import (
 	"strings"
 
-	"github.com/atornesi/tsql-ls/dialect"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/dialect"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 type NodeType int

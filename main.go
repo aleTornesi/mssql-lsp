@@ -11,8 +11,8 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/urfave/cli/v2"
 
-	"github.com/atornesi/tsql-ls/pkg/config"
-	"github.com/atornesi/tsql-ls/pkg/handler"
+	"github.com/aleTornesi/mssql-lsp/pkg/config"
+	"github.com/aleTornesi/mssql-lsp/pkg/handler"
 )
 
 const name = "tsql-ls"

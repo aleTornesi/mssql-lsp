@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/atornesi/tsql-ls/pkg/database"
+	"github.com/aleTornesi/mssql-lsp/pkg/database"
 	"gopkg.in/yaml.v2"
 )
 

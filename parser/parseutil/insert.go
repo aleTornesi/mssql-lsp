@@ -1,8 +1,8 @@
 package parseutil
 
 import (
-	"github.com/atornesi/tsql-ls/ast"
-	"github.com/atornesi/tsql-ls/token"
+	"github.com/aleTornesi/mssql-lsp/ast"
+	"github.com/aleTornesi/mssql-lsp/token"
 )
 
 type Insert struct {

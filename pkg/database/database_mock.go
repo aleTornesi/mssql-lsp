@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/atornesi/tsql-ls/dialect"
+	"github.com/aleTornesi/mssql-lsp/dialect"
 )
 
 type MockDBRepository struct {

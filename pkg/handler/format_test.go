@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/atornesi/tsql-ls/pkg/config"
-	"github.com/atornesi/tsql-ls/pkg/lsp"
+	"github.com/aleTornesi/mssql-lsp/pkg/config"
+	"github.com/aleTornesi/mssql-lsp/pkg/lsp"
 )
 
 var formattingOptionTab = lsp.FormattingOptions{
