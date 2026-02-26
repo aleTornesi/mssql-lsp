@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"io"
 	"log"
 	"sync"
 )
@@ -62,10 +63,23 @@ func (w *Worker) Start() {
 }
 
 func (w *Worker) Stop() {
+	w.CloseRepo()
 	close(w.done)
 }
 
+func (w *Worker) CloseRepo() {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+	if c, ok := w.dbRepo.(io.Closer); ok && c != nil {
+		if err := c.Close(); err != nil {
+			log.Printf("db worker: close repo: %v", err)
+		}
+	}
+	w.dbRepo = nil
+}
+
 func (w *Worker) ReCache(ctx context.Context, repo DBRepository) error {
+	w.CloseRepo()
 	w.dbRepo = repo
 	if err := w.updateAllCache(ctx); err != nil {
 		return err

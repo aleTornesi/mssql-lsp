@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/urfave/cli/v2"
 
+	"github.com/atornesi/tsql-ls/internal/config"
 	"github.com/atornesi/tsql-ls/internal/handler"
 )
 
@@ -43,6 +45,11 @@ func realMain() error {
 				Aliases: []string{"t"},
 				Usage:   "Print all requests and responses.",
 			},
+			&cli.StringFlag{
+				Name:    "config",
+				Aliases: []string{"c"},
+				Usage:   "Path to config file.",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			return serve(c)
@@ -65,6 +72,7 @@ func realMain() error {
 func serve(c *cli.Context) error {
 	logfile := c.String("log")
 	trace := c.Bool("trace")
+	configFile := c.String("config")
 
 	var logWriter io.Writer
 	if logfile != "" {
@@ -80,6 +88,22 @@ func serve(c *cli.Context) error {
 	log.SetOutput(logWriter)
 
 	server := handler.NewServer()
+
+	if configFile != "" {
+		cfg, err := config.GetConfig(configFile)
+		if err != nil {
+			log.Printf("config load %q: %v", configFile, err)
+		} else {
+			server.SpecificFileCfg = cfg
+		}
+	} else {
+		cfg, err := config.GetDefaultConfig()
+		if err != nil && !errors.Is(err, config.ErrNotFoundConfig) {
+			log.Printf("default config load: %v", err)
+		} else if err == nil {
+			server.DefaultFileCfg = cfg
+		}
+	}
 	defer func() {
 		if err := server.Stop(); err != nil {
 			log.Println(err)
